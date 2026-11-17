@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ProjectsPage } from './ProjectsPage';
@@ -126,8 +126,15 @@ describe('ProjectsPage', () => {
 
     expect(pickDirectory).toHaveBeenCalledWith('选择项目根目录');
     expect(addProject).toHaveBeenCalledWith(undefined, 'C:/projects/demo');
-    expect(screen.getByRole('heading', { name: '演示项目' })).toBeInTheDocument();
-    expect(screen.getByTestId('location')).toHaveTextContent(`/projects/${encodeURIComponent(project.id)}`);
+    expect(await screen.findByRole('heading', { name: '演示项目' })).toBeInTheDocument();
+    // `addProjectFromDirectory` awaits addProject before navigating. userEvent's
+    // click returns as soon as the event is dispatched, so the route change can
+    // land a tick later — wait for it instead of asserting immediately.
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        `/projects/${encodeURIComponent(project.id)}`,
+      );
+    });
   });
 
   it('does nothing when the directory picker is cancelled', async () => {
@@ -150,10 +157,14 @@ describe('ProjectsPage', () => {
     await user.click(screen.getByRole('button', { name: '添加项目' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/projects');
-    expect(useAppStore.getState().toasts[0]).toMatchObject({
-      tone: 'error',
-      title: '添加项目失败',
-      description: '目录不可访问',
+    // The toast is pushed from the async catch block, which can settle after
+    // the click promise resolves.
+    await waitFor(() => {
+      expect(useAppStore.getState().toasts[0]).toMatchObject({
+        tone: 'error',
+        title: '添加项目失败',
+        description: '目录不可访问',
+      });
     });
   });
 
