@@ -116,6 +116,16 @@ pub fn clean_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
+/// Canonical form used for ownership comparisons, with a lexical fallback.
+///
+/// macOS `tempfile` paths live under `/var/folders/...` but `canonicalize()`
+/// resolves them to `/private/var/folders/...`; comparing a canonical mount
+/// target against the raw store path then misclassifies our own symlink as a
+/// conflict. Resolving both sides keeps Linux/macOS/Windows consistent.
+pub fn canonical_for_compare(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| clean_path(path))
+}
+
 /// Lexically normalise a path without touching the file system. This keeps
 /// comparisons predictable for paths that may not exist yet.
 pub fn normalize(path: &Path) -> PathBuf {
@@ -160,4 +170,32 @@ pub fn short_hash(value: &str) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// macOS temp dirs are under `/var`, which canonicalizes to `/private/var`.
+    /// Ownership checks must compare canonical forms on both sides.
+    #[test]
+    fn canonical_for_compare_resolves_symlinked_parents() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let real = temp.path().join("real");
+        fs::create_dir_all(real.join("store/skill")).expect("dirs");
+        let alias = temp.path().join("alias");
+        std::os::unix::fs::symlink(&real, &alias).expect("symlink");
+
+        let store_via_alias = alias.join("store");
+        let canonical_mount = store_via_alias
+            .join("skill")
+            .canonicalize()
+            .expect("canonical");
+        assert!(!is_under(&store_via_alias, &canonical_mount));
+        assert!(is_under(
+            &canonical_for_compare(&store_via_alias),
+            &canonical_mount
+        ));
+    }
 }

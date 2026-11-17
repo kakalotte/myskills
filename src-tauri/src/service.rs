@@ -5,7 +5,7 @@ use crate::fsutil::{
     remove_symlink, write_file, write_json,
 };
 use crate::model::*;
-use crate::paths::{AppPaths, clean_path, is_under, path_key, short_hash};
+use crate::paths::{AppPaths, canonical_for_compare, clean_path, is_under, path_key, short_hash};
 use crate::skill::{ParsedSkill, dir_fingerprint, parse_skill_text, read_skill_dir};
 use chrono::{Local, SecondsFormat};
 use serde::{Deserialize, Serialize};
@@ -338,9 +338,9 @@ impl AppService {
                     .map(|metadata| metadata.file_type().is_symlink())
                     .unwrap_or(false);
                 if is_link
-                    && path
-                        .canonicalize()
-                        .is_ok_and(|canonical| is_under(&self.paths.store, &canonical))
+                    && path.canonicalize().is_ok_and(|canonical| {
+                        is_under(&canonical_for_compare(&self.paths.store), &canonical)
+                    })
                 {
                     // Managed symlink: badge comes from central skill.
                     continue;
@@ -426,7 +426,9 @@ impl AppService {
             if installation.mount_type == MountType::Symlink {
                 return target
                     .canonicalize()
-                    .map(|canonical| is_under(&self.paths.store, &canonical))
+                    .map(|canonical| {
+                        is_under(&canonical_for_compare(&self.paths.store), &canonical)
+                    })
                     .unwrap_or(false);
             }
             true
@@ -952,7 +954,7 @@ impl AppService {
             // ensure managed symlink to our store
             let managed = target
                 .canonicalize()
-                .map(|c| is_under(&self.paths.store, &c))
+                .map(|c| is_under(&canonical_for_compare(&self.paths.store), &c))
                 .unwrap_or(false);
             if !managed {
                 return Err(CmdError::new(
@@ -1065,7 +1067,7 @@ impl AppService {
                 if is_link
                     && path
                         .canonicalize()
-                        .is_ok_and(|c| is_under(&self.paths.store, &c))
+                        .is_ok_and(|c| is_under(&canonical_for_compare(&self.paths.store), &c))
                 {
                     continue;
                 }
@@ -1899,7 +1901,9 @@ impl AppService {
             // a link into the store pointing at another skill must not pass as installed.
             return target
                 .canonicalize()
-                .map(|canonical| path_key(&canonical) == path_key(central_dir))
+                .map(|canonical| {
+                    path_key(&canonical) == path_key(&canonical_for_compare(central_dir))
+                })
                 .unwrap_or(false);
         }
         manifest.installations.iter().any(|installation| {
@@ -1950,12 +1954,17 @@ impl AppService {
                 badge.detail = None;
             }
             Ok(metadata) if metadata.file_type().is_symlink() => match target.canonicalize() {
-                Ok(canonical) if path_key(&canonical) == path_key(Path::new(&skill.path)) => {
+                Ok(canonical)
+                    if path_key(&canonical)
+                        == path_key(&canonical_for_compare(Path::new(&skill.path))) =>
+                {
                     badge.state = BadgeState::Installed;
                     badge.mount_type = Some(MountType::Symlink);
                     badge.detail = Some("符号链接安装".to_string());
                 }
-                Ok(canonical) if is_under(&self.paths.store, &canonical) => {
+                Ok(canonical)
+                    if is_under(&canonical_for_compare(&self.paths.store), &canonical) =>
+                {
                     badge.state = BadgeState::Conflict;
                     badge.detail = Some("同名符号链接指向中央库中的其他技能".to_string());
                 }

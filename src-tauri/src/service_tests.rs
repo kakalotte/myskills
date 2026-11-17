@@ -163,7 +163,12 @@ mod tests {
             .iter()
             .find(|badge| badge.agent_id == "workbuddy")
             .expect("badge");
-        assert_eq!(badge.state, BadgeState::Installed);
+        assert_eq!(
+            badge.state,
+            BadgeState::Installed,
+            "detail: {:?}",
+            badge.detail
+        );
         assert!(badge.mount_type.is_some());
 
         let outcome = fixture
@@ -265,7 +270,12 @@ mod tests {
             .iter()
             .find(|badge| badge.agent_id == "workbuddy")
             .expect("badge");
-        assert_eq!(badge.state, BadgeState::Installed);
+        assert_eq!(
+            badge.state,
+            BadgeState::Installed,
+            "detail: {:?}",
+            badge.detail
+        );
     }
 
     #[test]
@@ -318,7 +328,12 @@ mod tests {
             .iter()
             .find(|badge| badge.agent_id == "workbuddy")
             .expect("badge");
-        assert_eq!(badge.state, BadgeState::Installed);
+        assert_eq!(
+            badge.state,
+            BadgeState::Installed,
+            "detail: {:?}",
+            badge.detail
+        );
     }
 
     #[test]
