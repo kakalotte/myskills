@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Seed the first paint from the local cache so a forced dark theme does not
+      // flash light before React mounts. `<Theme mode>` (src/theme/ThemedApp.tsx)
+      // stays authoritative and reconciles this with settings.json via bootstrap.
+      try {
+        var cachedTheme = localStorage.getItem('myskills.theme-cache');
+        if (cachedTheme === 'light' || cachedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', cachedTheme);
+        }
+      } catch (error) {
+        /* storage unavailable: fall back to the system scheme */
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/logo/logo.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/logo/logo-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/logo/logo-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo/logo-180.png" />
+    <title>mySkills</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,861 @@
+{
+  "schema": 1,
+  "source": {
+    "project": "xingkongliang/skills-manager",
+    "file": "src-tauri/src/core/tool_adapters.rs",
+    "from": "C:/Users/LC/AppData/Local/Temp/skills-research/sm-src/src-tauri/src/core/tool_adapters.rs"
+  },
+  "generated_by": "tools/import-adapters.mjs",
+  "count": 46,
+  "path_rules": {
+    "~": "用户主目录，运行时用 dirs::home_dir() 解析",
+    "APPDATA/": "Windows 应用数据目录，运行时用 dirs::config_dir() 解析",
+    ".config/": "Linux/macOS 的 XDG 配置目录",
+    "<project>/": "用户登记的项目根目录",
+    "scope_global": "~/<global_dir>，Windows 优先使用 windows_global_dir",
+    "scope_project": "<project>/<project_dir>",
+    "shared_discovery_only": "extra_scan_dirs 中的共享根只读扫描，绝不写入"
+  },
+  "adapters": [
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "category": "coding",
+      "global_dir": ".cursor/skills",
+      "detect_dir": ".cursor",
+      "project_dir": ".cursor/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "claude_code",
+      "name": "Claude Code",
+      "category": "coding",
+      "global_dir": ".claude/skills",
+      "detect_dir": ".claude",
+      "project_dir": ".claude/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "全局 ~/.claude/skills 与项目 <project>/.claude/skills，是最常见的基础适配器。"
+    },
+    {
+      "id": "github_copilot",
+      "name": "GitHub Copilot",
+      "category": "coding",
+      "global_dir": ".copilot/skills",
+      "detect_dir": ".copilot",
+      "project_dir": ".copilot/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "共享 ~/.agents/skills 仅用于发现，部署落到自身目录。"
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "category": "coding",
+      "global_dir": ".codeium/windsurf/skills",
+      "detect_dir": ".codeium/windsurf",
+      "project_dir": ".codeium/windsurf/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "category": "coding",
+      "global_dir": ".agents/skills",
+      "detect_dir": ".cline",
+      "project_dir": ".agents/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "category": "coding",
+      "global_dir": ".codex/skills",
+      "detect_dir": ".codex",
+      "project_dir": ".codex/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "会额外读共享 ~/.agents/skills，但该根只用于发现，部署必须落到 .codex/skills。"
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "category": "coding",
+      "global_dir": ".config/opencode/skills",
+      "detect_dir": ".config/opencode",
+      "project_dir": ".opencode/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": "APPDATA/opencode/skills",
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "全局根在 XDG/APPDATA 的 opencode/skills，项目根是 .opencode/skills，两者不同，必须分别处理。"
+    },
+    {
+      "id": "trae",
+      "name": "TRAE IDE",
+      "category": "coding",
+      "global_dir": ".trae/skills",
+      "detect_dir": ".trae",
+      "project_dir": ".trae/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "trae_cn",
+      "name": "TRAE CN",
+      "category": "coding",
+      "global_dir": ".trae-cn/skills",
+      "detect_dir": ".trae-cn",
+      "project_dir": ".trae-cn/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "codebuddy",
+      "name": "CodeBuddy",
+      "category": "coding",
+      "global_dir": ".codebuddy/skills",
+      "detect_dir": ".codebuddy",
+      "project_dir": ".codebuddy/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "qwen_code",
+      "name": "Qwen Code",
+      "category": "coding",
+      "global_dir": ".qwen/skills",
+      "detect_dir": ".qwen",
+      "project_dir": ".qwen/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi Code CLI",
+      "category": "coding",
+      "global_dir": ".kimi-code/skills",
+      "detect_dir": ".kimi-code",
+      "project_dir": ".kimi-code/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "qoder",
+      "name": "Qoder",
+      "category": "coding",
+      "global_dir": ".qoder/skills",
+      "detect_dir": ".qoder",
+      "project_dir": ".qoder/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "zcode",
+      "name": "ZCode",
+      "category": "coding",
+      "global_dir": ".zcode/skills",
+      "detect_dir": ".zcode",
+      "project_dir": ".zcode/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "deepseek_harness",
+      "name": "DeepSeek Harness",
+      "category": "coding",
+      "global_dir": ".dsh/skills",
+      "detect_dir": ".dsh",
+      "project_dir": ".dsh/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "家目录由 $DSH_HOME 或 ~/.dsh 决定；共享 ~/.agents/skills 仅用于发现。"
+    },
+    {
+      "id": "minimax_code",
+      "name": "MiniMax Code",
+      "category": "assistant",
+      "global_dir": ".minimax/skills",
+      "detect_dir": ".minimax",
+      "project_dir": ".legacy/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "不要扫描 ~/.minimax/.builtin-skills（启动时重置）与 ~/.mavis（兼容软链，会重复计数）；共享根仅用于发现。"
+    },
+    {
+      "id": "workbuddy",
+      "name": "WorkBuddy",
+      "category": "assistant",
+      "global_dir": ".workbuddy/skills",
+      "detect_dir": ".workbuddy",
+      "project_dir": ".workbuddy/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "国内版数据在 ~/.workbuddy；不要把技能部署到 skills-marketplace/，该目录会在市场版本更新时被整体清空。"
+    },
+    {
+      "id": "workbuddy_overseas",
+      "name": "WorkBuddy AI",
+      "category": "assistant",
+      "global_dir": ".workbuddy-ai/skills",
+      "detect_dir": ".workbuddy-ai",
+      "project_dir": ".workbuddy-ai/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "海外版数据在 ~/.workbuddy-ai，与国内版是两个独立目录；部署错目录会静默失效。"
+    },
+    {
+      "id": "qclaw",
+      "name": "QClaw",
+      "category": "assistant",
+      "global_dir": ".qclaw/skills",
+      "detect_dir": ".qclaw",
+      "project_dir": ".qclaw/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "easyclaw",
+      "name": "EasyClaw",
+      "category": "assistant",
+      "global_dir": ".easyclaw/skills",
+      "detect_dir": ".easyclaw",
+      "project_dir": ".easyclaw/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "autoclaw",
+      "name": "AutoClaw",
+      "category": "assistant",
+      "global_dir": ".openclaw-autoclaw/skills",
+      "detect_dir": ".openclaw-autoclaw",
+      "project_dir": ".openclaw-autoclaw/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "category": "assistant",
+      "global_dir": ".openclaw/skills",
+      "detect_dir": ".openclaw",
+      "project_dir": ".openclaw/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "gemini_cli",
+      "name": "Gemini CLI",
+      "category": "coding",
+      "global_dir": ".gemini/skills",
+      "detect_dir": ".gemini",
+      "project_dir": ".gemini/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "roo_code",
+      "name": "Roo Code",
+      "category": "coding",
+      "global_dir": ".roo/skills",
+      "detect_dir": ".roo",
+      "project_dir": ".roo/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "continue",
+      "name": "Continue",
+      "category": "coding",
+      "global_dir": ".continue/skills",
+      "detect_dir": ".continue",
+      "project_dir": ".continue/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "augment",
+      "name": "Augment",
+      "category": "coding",
+      "global_dir": ".augment/skills",
+      "detect_dir": ".augment",
+      "project_dir": ".augment/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "kilo_code",
+      "name": "Kilo Code",
+      "category": "coding",
+      "global_dir": ".kilocode/skills",
+      "detect_dir": ".kilocode",
+      "project_dir": ".kilocode/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "zencoder",
+      "name": "Zencoder",
+      "category": "coding",
+      "global_dir": ".zencoder/skills",
+      "detect_dir": ".zencoder",
+      "project_dir": ".zencoder/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands",
+      "category": "coding",
+      "global_dir": ".openhands/skills",
+      "detect_dir": ".openhands",
+      "project_dir": ".openhands/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "droid",
+      "name": "Droid",
+      "category": "coding",
+      "global_dir": ".factory/skills",
+      "detect_dir": ".factory",
+      "project_dir": ".factory/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "category": "coding",
+      "global_dir": ".config/agents/skills",
+      "detect_dir": ".config/agents",
+      "project_dir": ".config/agents/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": "APPDATA/agents/skills",
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "category": "coding",
+      "global_dir": ".config/goose/skills",
+      "detect_dir": ".config/goose",
+      "project_dir": ".config/goose/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": "APPDATA/goose/skills",
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "warp",
+      "name": "Warp",
+      "category": "coding",
+      "global_dir": ".agents/skills",
+      "detect_dir": ".warp",
+      "project_dir": ".agents/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "replit",
+      "name": "Replit",
+      "category": "coding",
+      "global_dir": ".config/agents/skills",
+      "detect_dir": ".replit",
+      "project_dir": ".config/agents/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": "APPDATA/agents/skills",
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "junie",
+      "name": "Junie",
+      "category": "coding",
+      "global_dir": ".junie/skills",
+      "detect_dir": ".junie",
+      "project_dir": ".junie/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro CLI",
+      "category": "coding",
+      "global_dir": ".kiro/skills",
+      "detect_dir": ".kiro",
+      "project_dir": ".kiro/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "category": "coding",
+      "global_dir": ".gemini/config/skills",
+      "detect_dir": ".gemini/antigravity",
+      "project_dir": ".agents/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "全局技能在 ~/.gemini/config/skills，工作区技能在 <project>/.agents/skills；~/.gemini/antigravity 只是运行时数据目录。"
+    },
+    {
+      "id": "mistral_vibe",
+      "name": "Mistral Vibe",
+      "category": "coding",
+      "global_dir": ".vibe/skills",
+      "detect_dir": ".vibe",
+      "project_dir": ".vibe/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "pi",
+      "name": "Pi",
+      "category": "coding",
+      "global_dir": ".pi/agent/skills",
+      "detect_dir": ".pi/agent",
+      "project_dir": ".pi/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "共享 ~/.agents/skills 仅用于发现，部署落到自身目录。"
+    },
+    {
+      "id": "command_code",
+      "name": "Command Code",
+      "category": "coding",
+      "global_dir": ".commandcode/skills",
+      "detect_dir": ".commandcode",
+      "project_dir": ".commandcode/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "deepagents",
+      "name": "Deep Agents",
+      "category": "coding",
+      "global_dir": ".deepagents/agent/skills",
+      "detect_dir": ".deepagents",
+      "project_dir": ".deepagents/agent/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "firebender",
+      "name": "Firebender",
+      "category": "coding",
+      "global_dir": ".firebender/skills",
+      "detect_dir": ".firebender",
+      "project_dir": ".firebender/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "omp_agent",
+      "name": "OMP Agent",
+      "category": "coding",
+      "global_dir": ".omp/agent/skills",
+      "detect_dir": ".omp/agent",
+      "project_dir": ".omp/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "用户级是 ~/.omp/agent/skills，项目级是 <project>/.omp/skills（没有 agent 段），路径非对称。"
+    },
+    {
+      "id": "gitlab_duo",
+      "name": "GitLab Duo",
+      "category": "coding",
+      "global_dir": ".gitlab/duo/skills",
+      "detect_dir": ".gitlab/duo",
+      "project_dir": ".agents/skills",
+      "extra_scan_dirs": [
+        ".agents/skills"
+      ],
+      "recursive_scan": false,
+      "windows_global_dir": "APPDATA/GitLab/duo/skills",
+      "shared_discovery_only": true,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": "Windows 真实配置根是 %APPDATA%/GitLab/duo，不是 ~/.gitlab/duo。skills-manager 未做平台分支，mySkills 用 windows_global_dir 补上。"
+    },
+    {
+      "id": "grok",
+      "name": "Grok",
+      "category": "coding",
+      "global_dir": ".grok/skills",
+      "detect_dir": ".grok",
+      "project_dir": ".grok/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": false,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "category": "assistant",
+      "global_dir": ".hermes/skills",
+      "detect_dir": ".hermes",
+      "project_dir": ".hermes/skills",
+      "extra_scan_dirs": [],
+      "recursive_scan": true,
+      "windows_global_dir": null,
+      "shared_discovery_only": false,
+      "scopes": [
+        "global",
+        "project"
+      ],
+      "deploy_mode": "auto",
+      "notes": ""
+    }
+  ]
+}

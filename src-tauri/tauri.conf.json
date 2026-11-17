@@ -1,0 +1,49 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "mySkills",
+  "version": "0.1.0",
+  "identifier": "com.myskills.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "mySkills",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1200,
+        "minHeight": 760,
+        "resizable": true,
+        "fullscreen": false,
+        "maximized": true,
+        "decorations": false,
+        "transparent": false,
+        "center": true,
+        "shadow": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "longDescription": "本地管理个人 Skills，快捷部署到每个 Agent",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

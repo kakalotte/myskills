@@ -1,0 +1,10 @@
+/*
+ * Local stand-in for `@astryxdesign/theme-neutral/fonts.css`.
+ *
+ * The shipped stylesheet `@import`s Figtree from fonts.googleapis.com, which
+ * would be a runtime network call and a remote asset — both forbidden here
+ * (this app is local-only and bundles its fonts). `vite.config.ts` aliases the
+ * package stylesheet to this file so the generated `src/astryx-themes.ts` keeps
+ * its expected import, and Astryx's `Figtree` family simply falls through to
+ * the app font stack declared in `src/styles/theme.css`.
+ */

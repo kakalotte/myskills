@@ -1,0 +1,489 @@
+@import 'tailwindcss';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import 'material-symbols/outlined.css';
+
+/*
+ * Colors and elevation are declared by the Astryx theme (src/theme/app-theme.ts)
+ * as `[light, dark]` tuples, which compile to CSS `light-dark()`. `inline` makes
+ * Tailwind emit `var(--app-*)` instead of copying values, so `<Theme mode>`
+ * switches every utility at once and nothing collides with Astryx's own
+ * `--color-*` tokens.
+ */
+@theme inline {
+  --color-background: var(--app-background);
+  --color-surface: var(--app-surface);
+  --color-surface-container-lowest: var(--app-surface-container-lowest);
+  --color-surface-container-low: var(--app-surface-container-low);
+  --color-surface-container: var(--app-surface-container);
+  --color-surface-container-high: var(--app-surface-container-high);
+  --color-surface-container-highest: var(--app-surface-container-highest);
+  --color-on-surface: var(--app-on-surface);
+  --color-on-surface-variant: var(--app-on-surface-variant);
+  --color-outline: var(--app-outline);
+  --color-outline-variant: var(--app-outline-variant);
+
+  --color-primary: var(--app-primary);
+  --color-on-primary: var(--app-on-primary);
+  --color-primary-container: var(--app-primary-container);
+  --color-on-primary-container: var(--app-on-primary-container);
+  --color-primary-fixed: var(--app-primary-fixed);
+  --color-primary-fixed-dim: var(--app-primary-fixed-dim);
+  --color-on-primary-fixed: var(--app-on-primary-fixed);
+
+  --color-secondary: var(--app-secondary);
+  --color-on-secondary: var(--app-on-secondary);
+  --color-secondary-container: var(--app-secondary-container);
+  --color-on-secondary-container: var(--app-on-secondary-container);
+  --color-secondary-fixed: var(--app-secondary-fixed);
+  --color-on-secondary-fixed: var(--app-on-secondary-fixed);
+  --color-tertiary: var(--app-tertiary);
+  --color-on-tertiary: var(--app-on-tertiary);
+  --color-tertiary-container: var(--app-tertiary-container);
+  --color-on-tertiary-container: var(--app-on-tertiary-container);
+  --color-tertiary-fixed: var(--app-tertiary-fixed);
+  --color-on-tertiary-fixed: var(--app-on-tertiary-fixed);
+
+  --color-error: var(--app-error);
+  --color-on-error: var(--app-on-error);
+  --color-error-container: var(--app-error-container);
+  --color-on-error-container: var(--app-on-error-container);
+  --color-success: var(--app-success);
+  --color-on-success: var(--app-on-success);
+  --color-success-container: var(--app-success-container);
+  --color-on-success-container: var(--app-on-success-container);
+  --color-warning: var(--app-warning);
+  --color-on-warning: var(--app-on-warning);
+  --color-warning-container: var(--app-warning-container);
+  --color-on-warning-container: var(--app-on-warning-container);
+
+  --color-inverse-surface: var(--app-inverse-surface);
+  --color-inverse-on-surface: var(--app-inverse-on-surface);
+  --color-code-surface: var(--app-code-surface);
+  --color-code-on-surface: var(--app-code-on-surface);
+  --color-scrim: var(--app-scrim);
+
+  --shadow-card: var(--app-shadow-card);
+  --shadow-float: var(--app-shadow-float);
+  --shadow-dialog: var(--app-shadow-dialog);
+}
+
+@theme {
+  --font-sans: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-body-lg: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-body-md: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-body-sm: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-headline-lg: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-headline-md: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-headline-sm: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-caption-caps: 'Segoe UI', 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --font-label-code-md: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --font-label-code-sm: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  --text-headline-lg: 24px;
+  --text-headline-lg--line-height: 32px;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 600;
+  --text-headline-md: 18px;
+  --text-headline-md--line-height: 24px;
+  --text-headline-md--letter-spacing: -0.015em;
+  --text-headline-md--font-weight: 600;
+  --text-headline-sm: 15px;
+  --text-headline-sm--line-height: 20px;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 600;
+  --text-body-lg: 14px;
+  --text-body-lg--line-height: 22px;
+  --text-body-lg--font-weight: 400;
+  --text-body-md: 13px;
+  --text-body-md--line-height: 18px;
+  --text-body-md--font-weight: 400;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+  --text-label-code-md: 12px;
+  --text-label-code-md--line-height: 16px;
+  --text-label-code-md--letter-spacing: -0.01em;
+  --text-label-code-sm: 12px;
+  --text-label-code-sm--line-height: 16px;
+  --text-label-code-sm--font-weight: 500;
+  --text-caption-caps: 11px;
+  --text-caption-caps--line-height: 14px;
+  --text-caption-caps--letter-spacing: 0.06em;
+  --text-caption-caps--font-weight: 600;
+
+  --spacing: 0.25rem;
+  --spacing-space-2xs: 0.125rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1rem;
+  --spacing-space-xl: 1.5rem;
+  --spacing-space-2xl: 2rem;
+  --spacing-gutter: 0.75rem;
+  --spacing-gutter-split: 1rem;
+
+  --radius-control: 4px;
+  --radius-card: 8px;
+  --radius-pill: 12px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /* The palette lives on the Astryx theme provider, so page-level surfaces fall
+     back to the same light-dark() pairs for the html/body canvas. */
+  html {
+    background: light-dark(#f4f6f8, #0f1319);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--app-background, light-dark(#f4f6f8, #0f1319));
+    color: var(--app-on-surface, light-dark(#111827, #e8edf5));
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 18px;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: auto;
+    text-rendering: optimizeLegibility;
+    text-size-adjust: 100%;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: var(--app-primary-fixed-dim, light-dark(#93b4f5, #2b4a7d));
+    color: var(--app-on-primary-fixed, light-dark(#0b2a6b, #cfe0ff));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(
+      in srgb,
+      var(--app-outline-variant, light-dark(#d7dee8, #2b3644)) 72%,
+      transparent
+    );
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(
+      in srgb,
+      var(--app-outline, light-dark(#94a3b8, #6b7a8d)) 55%,
+      transparent
+    );
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  :focus-visible {
+    outline: 2px solid
+      color-mix(
+        in srgb,
+        var(--app-primary, light-dark(#2563eb, #60a5fa)) 72%,
+        light-dark(white, #0f1319)
+      );
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 20;
+    user-select: none;
+    flex: none;
+  }
+
+  .material-symbols-outlined.filled {
+    font-variation-settings:
+      'FILL' 1,
+      'wght' 500,
+      'GRAD' 0,
+      'opsz' 20;
+  }
+
+  .window-drag {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .window-no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  .hairline {
+    box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-outline-variant) 42%, transparent);
+  }
+
+  .surface-grid {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in srgb, var(--color-outline-variant) 16%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--color-outline-variant) 16%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 28px 28px;
+  }
+
+  .md-body {
+    color: var(--color-on-surface-variant);
+    font-size: 13px;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .md-body > :first-child {
+    margin-top: 0;
+  }
+
+  .md-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  .md-body h1,
+  .md-body h2,
+  .md-body h3,
+  .md-body h4 {
+    color: var(--color-on-surface);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin: 1.35em 0 0.6em;
+  }
+
+  .md-body h1 {
+    font-size: 21px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+  }
+
+  .md-body h2 {
+    font-size: 17px;
+  }
+
+  .md-body h3 {
+    font-size: 15px;
+  }
+
+  .md-body h4 {
+    font-size: 13px;
+  }
+
+  .md-body p {
+    margin: 0.7em 0;
+  }
+
+  .md-body ul,
+  .md-body ol {
+    margin: 0.7em 0;
+    padding-left: 1.45em;
+  }
+
+  .md-body ul {
+    list-style: disc;
+  }
+
+  .md-body ol {
+    list-style: decimal;
+  }
+
+  .md-body li {
+    margin: 0.25em 0;
+  }
+
+  .md-body li::marker {
+    color: var(--color-primary);
+  }
+
+  .md-body a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .md-body code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--color-code-surface);
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--color-code-on-surface);
+  }
+
+  .md-body pre {
+    margin: 1em 0;
+    padding: 12px 14px;
+    background: var(--color-code-surface);
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+
+  .md-body pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .md-body blockquote {
+    margin: 1em 0;
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--color-primary-fixed-dim);
+    color: var(--color-on-surface-variant);
+  }
+
+  .md-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 12.5px;
+  }
+
+  .md-body th,
+  .md-body td {
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 55%, transparent);
+    padding: 6px 9px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .md-body th {
+    background: var(--color-surface-container-low);
+    color: var(--color-on-surface);
+    font-weight: 600;
+  }
+
+  .md-body hr {
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+    margin: 1.5em 0;
+  }
+
+  .md-body img {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .toast-enter {
+    animation: toast-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .dialog-enter {
+    animation: dialog-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /*
+   * Agent brand marks (components/agents/AgentMark.tsx). Several SVGs are a
+   * single dark ink, which vanishes on dark surfaces; others carry a near-black
+   * tile whose edge disappears. `data-agent-icon` is assigned in
+   * `lib/agentIcons.ts`.
+   *
+   * Forced light/dark is expressed by `data-theme` (synced by the root Astryx
+   * `<Theme>`); `system` mode has no attribute, so the OS media query covers it.
+   */
+  html[data-theme='dark'] img[data-agent-icon='mono'] {
+    filter: invert(1);
+  }
+
+  html[data-theme='dark'] img[data-agent-icon='dark-tile'] {
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, white 22%, transparent);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme]) img[data-agent-icon='mono'] {
+      filter: invert(1);
+    }
+
+    html:not([data-theme]) img[data-agent-icon='dark-tile'] {
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px color-mix(in srgb, white 22%, transparent);
+    }
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Keep form controls selectable (override third-party user-select utilities) */
+input, textarea, select {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}

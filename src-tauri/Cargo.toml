@@ -1,0 +1,35 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "mySkills - local skill library and multi-agent distributor"
+authors = ["mySkills"]
+license = ""
+repository = ""
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+atomic-write-file = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+flate2 = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml_ng = "0.10"
+sha2 = "0.10"
+tauri = { version = "2.12.5", features = [] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+uuid = { version = "1", features = ["v4"] }
+walkdir = "2"
+zip = "0.6"
+
+[dev-dependencies]
+tempfile = "3"
