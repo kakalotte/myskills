@@ -16,8 +16,11 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
+            osName: linux
           - platform: macos-latest
+            osName: macos
           - platform: windows-latest
+            osName: windows
 
     runs-on: ${{ matrix.platform }}
 
@@ -59,6 +62,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/set-version.mjs ${{ github.ref_name }}
+
       - name: Build and publish bundles
         uses: tauri-apps/tauri-action@v0
         env:
@@ -67,6 +74,23 @@ jobs:
           projectPath: .
           tagName: ${{ github.ref_name }}
           releaseName: 'mySkills ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download this version.'
+          releaseBody: |
+            ## 下载
+
+            请选择与你的系统对应的安装包：
+
+            - **macOS (Apple Silicon)**: `mySkills-macos-arm64-*.dmg`
+            - **Windows**: `mySkills-windows-x64-*-setup.exe`（NSIS 安装包）
+            - **Linux**: `mySkills-linux-x64-*.AppImage`
+
+            ## macOS 安装说明
+
+            当前版本未进行 Apple 开发者签名与公证，从浏览器下载后 macOS 会阻止打开。
+            请将 dmg 中的 mySkills.app 拖入「应用程序」，然后在「终端」执行：
+
+                xattr -cr "/Applications/mySkills.app"
+
+            之后即可正常双击打开。
+          assetNamePattern: '[name]-${{ matrix.osName }}-[arch]-[version][setup][ext]'
           releaseDraft: true
           prerelease: false
