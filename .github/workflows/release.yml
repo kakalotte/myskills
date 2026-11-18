@@ -79,9 +79,9 @@ jobs:
 
             请选择与你的系统对应的安装包：
 
-            - **macOS (Apple Silicon)**: `mySkills-macos-arm64-*.dmg`
+            - **macOS (Apple Silicon)**: `mySkills-macos-aarch64-*.dmg`
             - **Windows**: `mySkills-windows-x64-*-setup.exe`（NSIS 安装包）
-            - **Linux**: `mySkills-linux-x64-*.AppImage`
+            - **Linux**: `mySkills-linux-amd64-*.AppImage`
 
             ## macOS 安装说明
 
