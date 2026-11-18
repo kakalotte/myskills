@@ -21,7 +21,11 @@ jobs:
             osName: linux
           - platform: macos-latest
             osName: macos
+          - platform: macos-15-intel
+            osName: macos
           - platform: windows-latest
+            osName: windows
+          - platform: windows-11-arm
             osName: windows
 
     runs-on: ${{ matrix.platform }}
@@ -77,23 +81,29 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'mySkills ${{ github.ref_name }}'
           releaseBody: |
-            ## ??
+            ## 下载
 
-            ??????????????:
+            请选择与你的系统对应的安装包：
 
             - **macOS (Apple Silicon)**: `mySkills-macos-aarch64-*.dmg`
-            - **Windows**: `mySkills-windows-x64-*-setup.exe`(NSIS ???)
-            - **Linux x86_64 (?? PC)**: `mySkills-linux-amd64-*.AppImage` ? `.deb`
-            - **Linux ARM64 (????)**: `mySkills-linux-arm64-*.deb`
+            - **macOS (Intel)**: `mySkills-macos-x86_64-*.dmg`
+            - **Windows (x64)**: `mySkills-windows-x64-*-setup.exe`（NSIS 安装包）
+            - **Windows (ARM64)**: `mySkills-windows-aarch64-*-setup.exe`（NSIS 安装包）
+            - **Linux (.deb, x64)**: `mySkills-linux-amd64-*.deb`
+            - **Linux (.deb, ARM64)**: `mySkills-linux-arm64-*.deb`
+            - **Linux (.rpm, x64)**: `mySkills-linux-x86_64-*.rpm`
+            - **Linux (.rpm, ARM64)**: `mySkills-linux-aarch64-*.rpm`
+            - **Linux (AppImage, x64)**: `mySkills-linux-amd64-*.AppImage`
+            - **Linux (AppImage, ARM64)**: `mySkills-linux-aarch64-*.AppImage`
 
-            ## macOS ????
+            ## macOS 安装说明
 
-            ??????? Apple ????????,??????? macOS ??????
-            ?? dmg ?? mySkills.app ????????,?????????:
+            当前版本未进行 Apple 开发者签名与公证，从浏览器下载后 macOS 会阻止打开。
+            请将 dmg 中的 mySkills.app 拖入「应用程序」，然后在「终端」执行：
 
                 xattr -cr "/Applications/mySkills.app"
 
-            ???????????
+            之后即可正常双击打开。
           assetNamePattern: '[name]-${{ matrix.osName }}-[arch]-[version][setup][ext]'
           releaseDraft: true
           prerelease: false
