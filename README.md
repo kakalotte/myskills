@@ -1,5 +1,7 @@
 # mySkills
 
+[English](./README.en.md) | 中文
+
 > 本地管理个人 Skills，快捷部署到每个 Agent
 
 **mySkills** 是一款支持 **Windows / macOS / Linux** 的桌面应用，用于在本地创作与统一管理个人 AI Agent Skills，并将它们快捷分发到不同 Agent 的工作区。你可以把个人经验和工作流沉淀为可复用的 Skill，在不同 Agent 与项目中复用，提升工作效率。应用基于 Tauri 2 + React 构建，所有数据仅存储在本机，不依赖网络服务。
