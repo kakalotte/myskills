@@ -17,6 +17,8 @@ jobs:
         include:
           - platform: ubuntu-22.04
             osName: linux
+          - platform: ubuntu-24.04-arm
+            osName: linux
           - platform: macos-latest
             osName: macos
           - platform: windows-latest
@@ -75,22 +77,23 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'mySkills ${{ github.ref_name }}'
           releaseBody: |
-            ## 下载
+            ## ??
 
-            请选择与你的系统对应的安装包：
+            ??????????????:
 
             - **macOS (Apple Silicon)**: `mySkills-macos-aarch64-*.dmg`
-            - **Windows**: `mySkills-windows-x64-*-setup.exe`（NSIS 安装包）
-            - **Linux**: `mySkills-linux-amd64-*.AppImage`
+            - **Windows**: `mySkills-windows-x64-*-setup.exe`(NSIS ???)
+            - **Linux x86_64 (?? PC)**: `mySkills-linux-amd64-*.AppImage` ? `.deb`
+            - **Linux ARM64 (????)**: `mySkills-linux-arm64-*.deb`
 
-            ## macOS 安装说明
+            ## macOS ????
 
-            当前版本未进行 Apple 开发者签名与公证，从浏览器下载后 macOS 会阻止打开。
-            请将 dmg 中的 mySkills.app 拖入「应用程序」，然后在「终端」执行：
+            ??????? Apple ????????,??????? macOS ??????
+            ?? dmg ?? mySkills.app ????????,?????????:
 
                 xattr -cr "/Applications/mySkills.app"
 
-            之后即可正常双击打开。
+            ???????????
           assetNamePattern: '[name]-${{ matrix.osName }}-[arch]-[version][setup][ext]'
           releaseDraft: true
           prerelease: false

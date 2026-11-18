@@ -33,7 +33,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "longDescription": "本地管理个人 Skills，快捷部署到每个 Agent",
+    "longDescription": "?????? Skills,??????? Agent",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -41,6 +41,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
