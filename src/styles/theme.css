@@ -251,16 +251,6 @@
       'opsz' 20;
   }
 
-  .window-drag {
-    -webkit-app-region: drag;
-    app-region: drag;
-  }
-
-  .window-no-drag {
-    -webkit-app-region: no-drag;
-    app-region: no-drag;
-  }
-
   .hairline {
     box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-outline-variant) 42%, transparent);
   }

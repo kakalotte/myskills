@@ -6,7 +6,7 @@ export function TitleBar() {
   const { desktop, maximized, minimize, toggleMaximize, close } = useWindowControls();
 
   return (
-    <header className="window-drag relative z-50 flex h-12 shrink-0 items-center justify-between border-b border-[color-mix(in_srgb,var(--color-outline-variant,#d7dee8)_70%,transparent)] bg-[var(--color-surface-container-lowest,#fff)] px-4 shadow-[0_1px_0_rgba(37,99,235,0.08)]">
+    <header data-tauri-drag-region className="relative z-50 flex h-12 shrink-0 items-center justify-between border-b border-[color-mix(in_srgb,var(--color-outline-variant,#d7dee8)_70%,transparent)] bg-[var(--color-surface-container-lowest,#fff)] px-4 shadow-[0_1px_0_rgba(37,99,235,0.08)]">
       <div className="flex h-full min-w-0 flex-1 items-center gap-3">
         <div className="flex items-center gap-2">
           <BrandMark size={22} />
@@ -16,7 +16,7 @@ export function TitleBar() {
         </div>
       </div>
 
-      <div className="window-no-drag flex items-center gap-1">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={minimize}
