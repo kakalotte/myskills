@@ -86,9 +86,9 @@ jobs:
             请选择与你的系统对应的安装包：
 
             - **macOS (Apple Silicon)**: `mySkills-macos-aarch64-*.dmg`
-            - **macOS (Intel)**: `mySkills-macos-x86_64-*.dmg`
+            - **macOS (Intel)**: `mySkills-macos-x64-*.dmg`
             - **Windows (x64)**: `mySkills-windows-x64-*-setup.exe`（NSIS 安装包）
-            - **Windows (ARM64)**: `mySkills-windows-aarch64-*-setup.exe`（NSIS 安装包）
+            - **Windows (ARM64)**: `mySkills-windows-arm64-*-setup.exe`（NSIS 安装包）
             - **Linux (.deb, x64)**: `mySkills-linux-amd64-*.deb`
             - **Linux (.deb, ARM64)**: `mySkills-linux-arm64-*.deb`
             - **Linux (.rpm, x64)**: `mySkills-linux-x86_64-*.rpm`
