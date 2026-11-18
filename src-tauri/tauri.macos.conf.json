@@ -4,8 +4,23 @@
     "windows": [
       {
         "label": "main",
+        "title": "mySkills",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1200,
+        "minHeight": 760,
+        "resizable": true,
+        "fullscreen": false,
         "decorations": true,
-        "titleBarStyle": "Overlay"
+        "transparent": false,
+        "center": true,
+        "shadow": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 13,
+          "y": 22
+        }
       }
     ]
   }
