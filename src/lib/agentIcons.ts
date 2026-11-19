@@ -1,7 +1,10 @@
 /**
  * Agent 图标映射（离线资源，SVG）。
- * 图标文件来自 https://icons.lobehub.com/ 生态（@lobehub/icons-static-svg）并离线存放于 public/agent-icons/；
- * 少量未在静态 SVG 包中提供的 agent 使用本地生成的占位 SVG。各标识著作权归各自权利人所有。
+ * 图标文件来自 Lobe Icons（https://github.com/lobehub/lobe-icons，MIT）
+ * 并离线存放于 public/agent-icons/，许可全文见同目录 LICENSE.lobe-icons.txt
+ * 与仓库根目录 THIRD_PARTY_NOTICES.md。
+ * 少量未在静态 SVG 包中提供的 agent 使用本地生成的占位 SVG。
+ * 各品牌商标归各自权利人所有；此处仅用于标识对应 Agent，不代表背书。
  */
 
 export const AGENT_ICON_DIR = '/agent-icons/';
@@ -10,41 +13,40 @@ export const AGENT_ICON_FILES: Record<string, string> = {
   amp: 'amp.svg',
   antigravity: 'antigravity.svg',
   augment: 'augment.svg',
-  claude_code: 'claude_code.svg',
+  claude_code: 'claude_brand.svg',
   cline: 'cline.svg',
   codebuddy: 'codebuddy.svg',
   codex: 'codex.svg',
-  command_code: 'command_code.svg',
+  command_code: 'commandcode.svg',
   continue: 'continue.png',
   cursor: 'cursor.svg',
   deepagents: 'deepagents.svg',
-  deepseek_harness: 'deepseek_harness.svg',
+  deepseek_harness: 'deepseek.svg',
   droid: 'droid.svg',
   firebender: 'firebender.svg',
-  gemini_cli: 'gemini_cli.svg',
-  github_copilot: 'github_copilot.svg',
+  gemini_cli: 'geminicli.svg',
+  github_copilot: 'githubcopilot.svg',
   gitlab_duo: 'gitlab_duo.svg',
   goose: 'goose.svg',
   grok: 'grok.svg',
-  hermes: 'hermes.svg',
+  hermes: 'hermesagent.svg',
   junie: 'junie.svg',
-  kilo_code: 'kilo_code.svg',
+  kilo_code: 'kilocode.svg',
   kimi: 'kimi.svg',
   kiro: 'kiro.svg',
-  minimax_code: 'minimax_code.svg',
-  mistral_vibe: 'mistral_vibe.svg',
+  minimax_code: 'minimax.svg',
+  mistral_vibe: 'mistral.svg',
   openclaw: 'openclaw.svg',
   omp_agent: 'oh_my_pi.svg',
   opencode: 'opencode.svg',
   openhands: 'openhands.svg',
   pi: 'pi.svg',
   qoder: 'qoder.svg',
-  qwen_code: 'qwen_code.svg',
+  qwen_code: 'qwen.svg',
   replit: 'replit.svg',
-  roo_code: 'roo_code.svg',
-  // `trae` / `trae_cn` ship a 140x34 wordmark with an embedded dark background,
-  // which turns into an unreadable smudge at 15-28px. They intentionally fall
-  // back to the initials badge; `trae.svg` / `trae_cn.svg` stay in public/.
+  roo_code: 'roocode.svg',
+  trae: 'trae.svg',
+  trae_cn: 'trae_cn.svg',
   warp: 'warp.svg',
   windsurf: 'windsurf.svg',
   workbuddy: 'workbuddy.svg',
@@ -63,54 +65,13 @@ export function getAgentIconSrc(id: string): string | null {
 }
 
 /**
- * How an icon needs to adapt to a dark surface.
- *
- * Several brand marks are a single dark ink (`fill="currentColor"`, pure black,
- * or no fill at all), which disappears on `--app-surface` in dark mode. Others
- * ship their own near-black tile, whose edge vanishes too. Icons that are
- * colorful on transparent or already carry a light plate need nothing.
+ * How an icon needs to adapt to a dark surface. Icons are self-contained
+ * avatar tiles (brand-color background + white glyph), so no CSS inversion or
+ * edge treatment is needed — every icon keeps its own colors in both themes.
  */
-export type AgentIconTreatment = 'mono' | 'dark-tile' | 'default';
+export type AgentIconTreatment = 'default';
 
-/** Single-ink glyphs: inverted in dark mode by `styles/theme.css`. */
-const MONO_ICONS = new Set([
-  'antigravity',
-  'augment',
-  'cline',
-  'codex',
-  'cursor',
-  'deepagents',
-  'github_copilot',
-  'goose',
-  'hermes',
-  'junie',
-  'minimax_code',
-  'opencode',
-  'openhands',
-  'qwen_code',
-  'replit',
-  'roo_code',
-  'warp',
-  'zencoder',
-]);
-
-/** Icons drawn on an almost-black plate: get a hairline edge in dark mode. */
-const DARK_TILE_ICONS = new Set([
-  'droid',
-  'firebender',
-  'grok',
-  'kiro',
-  'oh_my_pi',
-  'openclaw',
-  'pi',
-  'qoder',
-  'windsurf',
-  'zcode',
-]);
-
-export function getAgentIconTreatment(id: string): AgentIconTreatment {
-  if (MONO_ICONS.has(id)) return 'mono';
-  if (DARK_TILE_ICONS.has(id)) return 'dark-tile';
+export function getAgentIconTreatment(): AgentIconTreatment {
   return 'default';
 }
 

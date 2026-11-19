@@ -7,6 +7,8 @@ use crate::fsutil::{
 use crate::model::*;
 use crate::paths::{AppPaths, canonical_for_compare, clean_path, is_under, path_key, short_hash};
 use crate::skill::{ParsedSkill, dir_fingerprint, parse_skill_text, read_skill_dir};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use chrono::{Local, SecondsFormat};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -198,6 +200,155 @@ impl AppService {
         }
         drop(_guard);
         self.bootstrap()
+    }
+
+    // ---------------------------------------------------------------------
+    // User-defined Agents (global scope)
+    // ---------------------------------------------------------------------
+
+    pub fn add_custom_agent(&self, payload: AddCustomAgentPayload) -> CmdResult<Bootstrap> {
+        let _guard = self.lock()?;
+        let name = payload.name.trim();
+        if name.is_empty() {
+            return Err(CmdError::new("INVALID_NAME", "请输入 Agent 名称"));
+        }
+        let raw_path = self.paths.parse_project_path(&payload.path);
+        let canonical = raw_path.canonicalize().map_err(|error| {
+            CmdError::new("PATH_MISSING", "目录不存在或无法访问").with_detail(error.to_string())
+        })?;
+        let canonical = clean_path(&canonical);
+        if !canonical.is_dir() {
+            return Err(CmdError::new("INVALID_PATH", "路径必须是目录"));
+        }
+
+        let mut settings = self.load_settings()?;
+        if settings
+            .custom_agents
+            .iter()
+            .any(|agent| agent.name == name)
+        {
+            return Err(CmdError::new("AGENT_NAME_EXISTS", "已存在同名自定义 Agent"));
+        }
+        if settings
+            .custom_agents
+            .iter()
+            .any(|agent| path_key(Path::new(&agent.path)) == path_key(&canonical))
+        {
+            return Err(CmdError::new(
+                "AGENT_PATH_EXISTS",
+                "该目录已添加为自定义 Agent",
+            ));
+        }
+
+        let id = format!(
+            "custom_{}",
+            short_hash(&format!("{}:{}", path_key(&canonical), now()))
+        );
+        let icon_kind = match payload.icon_kind.as_str() {
+            "builtin" => "builtin",
+            "uploaded" => "uploaded",
+            _ => "none",
+        };
+        let mut icon_value = payload.icon_value.trim().to_string();
+        if icon_kind == "uploaded" {
+            let extension = icon_value.to_ascii_lowercase();
+            if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+                return Err(CmdError::new(
+                    "INVALID_ICON",
+                    "仅支持 PNG、JPG、WEBP 格式的图标",
+                ));
+            }
+            let data_url = payload.icon_base64.as_deref().unwrap_or("");
+            let encoded = data_url
+                .split_once(',')
+                .map(|(_, value)| value)
+                .unwrap_or(data_url);
+            let bytes = BASE64.decode(encoded).map_err(|error| {
+                CmdError::new("INVALID_ICON", "图标文件无法解析").with_detail(error.to_string())
+            })?;
+            if bytes.is_empty() || bytes.len() > 2 * 1024 * 1024 {
+                return Err(CmdError::new("INVALID_ICON", "图标大小需在 2 MB 以内"));
+            }
+            write_file(
+                &self.paths.custom_icons.join(format!("{id}.{extension}")),
+                &bytes,
+            )?;
+            icon_value = extension;
+        } else if icon_kind == "builtin" {
+            let file = Path::new(&icon_value)
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("");
+            if file.is_empty() || !(file.ends_with(".svg") || file.ends_with(".png")) {
+                return Err(CmdError::new("INVALID_ICON", "内置图标无效"));
+            }
+            icon_value = file.to_string();
+        } else {
+            icon_value.clear();
+        }
+
+        settings.custom_agents.push(CustomAgent {
+            id: id.clone(),
+            name: name.to_string(),
+            path: canonical.to_string_lossy().to_string(),
+            icon_kind: icon_kind.to_string(),
+            icon_value,
+            added_at: now(),
+        });
+
+        let root_id = format!("agent:{id}:global");
+        // A registered directory exists at this point, so the default is authorized.
+        if payload.authorized {
+            settings.authorized_roots.remove(&root_id);
+        } else {
+            settings.authorized_roots.insert(root_id, false);
+        }
+        self.save_settings(&settings)?;
+        drop(_guard);
+        self.bootstrap()
+    }
+
+    pub fn remove_custom_agent(&self, id: &str) -> CmdResult<Bootstrap> {
+        let _guard = self.lock()?;
+        let mut settings = self.load_settings()?;
+        let before = settings.custom_agents.len();
+        settings.custom_agents.retain(|agent| agent.id != id);
+        if settings.custom_agents.len() == before {
+            return Err(CmdError::new("UNKNOWN_AGENT", "未找到该自定义 Agent"));
+        }
+        settings
+            .authorized_roots
+            .remove(&format!("agent:{id}:global"));
+        self.save_settings(&settings)?;
+        for extension in ["png", "jpg", "jpeg", "webp"] {
+            let path = self.paths.custom_icons.join(format!("{id}.{extension}"));
+            if path.exists() {
+                let _ = fs::remove_file(&path);
+            }
+        }
+        drop(_guard);
+        self.bootstrap()
+    }
+
+    fn custom_icon_src(&self, agent: &CustomAgent) -> Option<String> {
+        match agent.icon_kind.as_str() {
+            "builtin" => Some(format!("/agent-icons/{}", agent.icon_value)),
+            "uploaded" => {
+                let path = self
+                    .paths
+                    .custom_icons
+                    .join(format!("{}.{}", agent.id, agent.icon_value));
+                let bytes = fs::read(&path).ok()?;
+                let mime = match agent.icon_value.as_str() {
+                    "png" => "image/png",
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "webp" => "image/webp",
+                    _ => "application/octet-stream",
+                };
+                Some(format!("data:{mime};base64,{}", BASE64.encode(bytes)))
+            }
+            _ => None,
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -812,10 +963,18 @@ impl AppService {
         let scope = payload.scope;
         let project_id = payload.project_id.clone();
         for item in payload.items {
+            let canonical = adapters::canonical_agent_id(&item.agent_id);
             let agent_name = agents
                 .iter()
-                .find(|a| a.id == adapters::canonical_agent_id(&item.agent_id))
+                .find(|a| a.id == canonical)
                 .map(|a| a.name.clone())
+                .or_else(|| {
+                    settings
+                        .custom_agents
+                        .iter()
+                        .find(|agent| agent.id == canonical)
+                        .map(|agent| agent.name.clone())
+                })
                 .unwrap_or_else(|| item.agent_id.clone());
             match self.install_skill(InstallSkillPayload {
                 skill_name: item.skill_name.clone(),
@@ -1679,10 +1838,19 @@ impl AppService {
     }
 
     fn bootstrap_value(&self, settings: &Settings) -> Bootstrap {
+        let mut agents = adapters::agent_info();
+        for custom in &settings.custom_agents {
+            agents.push(AgentInfo {
+                id: custom.id.clone(),
+                name: custom.name.clone(),
+                icon: custom.icon_value.clone(),
+                accent: "primary".to_string(),
+            });
+        }
         Bootstrap {
             settings: settings.clone(),
             roots: self.all_roots(settings),
-            agents: adapters::agent_info(),
+            agents,
             central_store_path: self.paths.store.to_string_lossy().to_string(),
             central_store_display: self.paths.display(&self.paths.store),
             app_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -1718,8 +1886,30 @@ impl AppService {
                     exists,
                     authorized: Self::effective_root_authorized(settings, &root_id, exists),
                     skill_count: 0,
+                    is_custom: false,
+                    icon_src: None,
                 });
             }
+        }
+        for custom in &settings.custom_agents {
+            let root_id = format!("agent:{}:global", custom.id);
+            let path = self.paths.parse_project_path(&custom.path);
+            let exists = path.is_dir();
+            roots.push(RootInfo {
+                id: root_id.clone(),
+                agent_id: custom.id.clone(),
+                agent_name: custom.name.clone(),
+                scope: ScopeKind::Global,
+                project_id: None,
+                project_name: None,
+                path: path.to_string_lossy().to_string(),
+                display_path: self.paths.display(&path),
+                exists,
+                authorized: Self::effective_root_authorized(settings, &root_id, exists),
+                skill_count: 0,
+                is_custom: true,
+                icon_src: self.custom_icon_src(custom),
+            });
         }
         for project in &settings.projects {
             for adapter in adapters::all_adapters() {
@@ -1741,6 +1931,8 @@ impl AppService {
                     exists,
                     authorized: Self::effective_root_authorized(settings, &root_id, exists),
                     skill_count: 0,
+                    is_custom: false,
+                    icon_src: None,
                 });
             }
         }
@@ -1761,6 +1953,8 @@ impl AppService {
             exists,
             authorized,
             skill_count: 0,
+            is_custom: false,
+            icon_src: None,
         }
     }
 
@@ -1813,7 +2007,12 @@ impl AppService {
         agent_id: &str,
     ) -> CmdResult<RootInfo> {
         let canonical = adapters::canonical_agent_id(agent_id);
-        if adapters::find_adapter(canonical).is_none() {
+        if adapters::find_adapter(canonical).is_none()
+            && !settings
+                .custom_agents
+                .iter()
+                .any(|agent| agent.id == canonical)
+        {
             return Err(CmdError::new("UNKNOWN_AGENT", "未知的 Agent"));
         }
         self.roots_for_context(settings, scope, project_id)?

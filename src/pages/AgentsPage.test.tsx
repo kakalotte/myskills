@@ -25,6 +25,8 @@ const claudeRoot: RootInfo = {
   exists: true,
   authorized: true,
   skillCount: 0,
+  isCustom: false,
+  iconSrc: null,
 };
 
 const workbuddyRoot: RootInfo = {
@@ -116,6 +118,7 @@ const bootstrap: Bootstrap = {
     theme: 'system',
     authorizedRoots: {},
     projects: [],
+    customAgents: [],
     activeScope: 'global',
     activeProjectId: null,
   },

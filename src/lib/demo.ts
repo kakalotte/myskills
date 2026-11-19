@@ -1,4 +1,6 @@
+import { AGENT_ICON_DIR } from './agentIcons';
 import type {
+  AddCustomAgentPayload,
   Bootstrap,
   Bundle,
   BundleOutcome,
@@ -7,6 +9,7 @@ import type {
   CreateBundlePayload,
   CreateSkillOutcome,
   CreateSkillPayload,
+  CustomAgent,
   DistributeBundleOutcome,
   ImportOutcome,
   ImportSkillPayload,
@@ -42,6 +45,7 @@ function effectiveAuthorized(rootId: string, exists: boolean): boolean {
   return authorizedOverrides[rootId] ?? exists;
 }
 const projects: Project[] = [];
+const customAgents: CustomAgent[] = [];
 const skillMeta: Record<string, { source: 'builtin' | 'imported' | 'external' }> = {
   'weekly-menu': { source: 'builtin' },
   'daily-standup': { source: 'external' },
@@ -75,8 +79,15 @@ function rootPath(agentId: string, scope: 'global' | 'project', project?: Projec
   return `~/.${agentId}/skills`;
 }
 
+function customIconSrc(agent: CustomAgent): string | null {
+  if (agent.iconKind === 'builtin') return `${AGENT_ICON_DIR}${agent.iconValue}`;
+  // Demo stores the whole data URL in iconValue; the real backend stores it on disk.
+  if (agent.iconKind === 'uploaded') return agent.iconValue || null;
+  return null;
+}
+
 function globalRoots() {
-  return agentDefs.map((agent) => {
+  const builtins = agentDefs.map((agent) => {
     const exists = true;
     const id = `agent:${agent.id}:global`;
     return {
@@ -91,8 +102,30 @@ function globalRoots() {
       exists,
       authorized: effectiveAuthorized(id, exists),
       skillCount: 0,
+      isCustom: false,
+      iconSrc: null,
     };
   });
+  const customs = customAgents.map((agent) => {
+    const id = `agent:${agent.id}:global`;
+    const exists = true;
+    return {
+      id,
+      agentId: agent.id,
+      agentName: agent.name,
+      scope: 'global' as const,
+      projectId: null,
+      projectName: null,
+      path: agent.path.replace('~', '/demo/home'),
+      displayPath: agent.path,
+      exists,
+      authorized: effectiveAuthorized(id, exists),
+      skillCount: 0,
+      isCustom: true,
+      iconSrc: customIconSrc(agent),
+    };
+  });
+  return [...builtins, ...customs];
 }
 
 function projectRootsFor(project: Project) {
@@ -111,6 +144,8 @@ function projectRootsFor(project: Project) {
       exists,
       authorized: effectiveAuthorized(id, exists),
       skillCount: 0,
+      isCustom: false,
+      iconSrc: null,
     };
   });
 }
@@ -127,11 +162,20 @@ function buildBootstrap(): Bootstrap {
       theme,
       authorizedRoots: { ...authorizedOverrides },
       projects: [...projects],
+      customAgents: [...customAgents],
       activeScope: 'global',
       activeProjectId: null,
     },
     roots: allRoots(),
-    agents: agentDefs,
+    agents: [
+      ...agentDefs,
+      ...customAgents.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        icon: agent.iconValue,
+        accent: 'primary' as const,
+      })),
+    ],
     centralStorePath: '/demo/home/.myskills/store',
     centralStoreDisplay: '~/.myskills/store',
     appVersion: '0.1.0-demo',
@@ -293,6 +337,32 @@ export const demoApi = {
     const defaultAuthorized = root?.exists ?? false;
     if (value === defaultAuthorized) delete authorizedOverrides[rootId];
     else authorizedOverrides[rootId] = value;
+    return buildBootstrap();
+  },
+  addCustomAgent: async (payload: AddCustomAgentPayload): Promise<Bootstrap> => {
+    const name = payload.name.trim();
+    if (!name) reject('INVALID_NAME', '请输入 Agent 名称');
+    if (!payload.path.trim()) reject('INVALID_PATH', '请选择或输入目录路径');
+    if (customAgents.some((agent) => agent.name === name))
+      reject('AGENT_NAME_EXISTS', '已存在同名自定义 Agent');
+    const id = `custom_${Date.now().toString(36)}`;
+    customAgents.push({
+      id,
+      name,
+      path: payload.path.trim(),
+      iconKind: payload.iconKind,
+      iconValue:
+        payload.iconKind === 'uploaded' ? (payload.iconBase64 ?? '') : payload.iconValue.trim(),
+      addedAt: now(),
+    });
+    if (!payload.authorized) authorizedOverrides[`agent:${id}:global`] = false;
+    return buildBootstrap();
+  },
+  removeCustomAgent: async (id: string): Promise<Bootstrap> => {
+    const index = customAgents.findIndex((agent) => agent.id === id);
+    if (index === -1) reject('UNKNOWN_AGENT', '未找到该自定义 Agent');
+    customAgents.splice(index, 1);
+    delete authorizedOverrides[`agent:${id}:global`];
     return buildBootstrap();
   },
   setTheme: async (value: ThemePreference): Promise<Settings> => {

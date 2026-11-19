@@ -27,6 +27,16 @@ const assetHighlights = [
   },
 ];
 
+const credits = [
+  { name: 'Lobe Icons', license: 'MIT', url: 'https://github.com/lobehub/lobe-icons' },
+  {
+    name: 'Skills Manager',
+    license: 'MIT',
+    url: 'https://github.com/xingkongliang/skills-manager',
+  },
+  { name: 'Astryx', license: 'MIT', url: 'https://github.com/meta/astryx' },
+];
+
 const capabilities = [
   {
     icon: 'link',
@@ -149,6 +159,34 @@ export function SettingsAboutPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="flex flex-col gap-space-md rounded-card bg-surface-container-lowest p-space-xl shadow-card">
+        <div className="flex items-center gap-space-sm">
+          <span className="flex h-9 w-9 items-center justify-center rounded-card bg-error-container/60">
+            <Icon name="favorite" size={20} className="text-error" />
+          </span>
+          <h2 className="text-headline-md text-on-surface">致谢</h2>
+        </div>
+
+        <div className="flex flex-col items-start gap-space-sm text-body-md leading-relaxed text-on-surface-variant">
+          <p>本项目使用或借鉴了以下开源项目，特向各项目作者致敬</p>
+          <ul className="flex flex-wrap gap-space-xs">
+            {credits.map((credit) => (
+              <li key={credit.name}>
+                <a
+                  href={credit.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-space-sm py-space-2xs text-label-code-sm text-primary transition-colors hover:bg-surface-container-high"
+                >
+                  <Icon name="open_in_new" size={14} />
+                  {credit.name} · {credit.license}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
     </>
   );

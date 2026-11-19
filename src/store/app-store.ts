@@ -3,6 +3,7 @@ import { api, normalizeError } from '../lib/bridge';
 import { mountLabel } from '../lib/format';
 import { readThemeCache, writeThemeCache } from '../lib/theme';
 import type {
+  AddCustomAgentPayload,
   Bootstrap,
   CmdError,
   ImportOutcome,
@@ -45,6 +46,8 @@ export interface AppState {
   refreshProject: (projectId: string, options?: RefreshOptions) => Promise<ScanResult | null>;
   scanContext: (payload: ScanPayload, options?: RefreshOptions) => Promise<ScanResult | null>;
   authorizeRoot: (rootId: string, authorized: boolean) => Promise<void>;
+  addCustomAgent: (payload: AddCustomAgentPayload) => Promise<void>;
+  removeCustomAgent: (id: string) => Promise<void>;
   addProject: (name: string | undefined, path: string) => Promise<Project>;
   removeProject: (projectId: string) => Promise<void>;
   install: (payload: InstallSkillPayload, agentName: string) => Promise<MountOutcome>;
@@ -229,6 +232,32 @@ export const useAppStore = create<AppState>((set, get) => ({
       tone: authorized ? 'success' : 'info',
       title: authorized ? '目录已授权' : '已撤销目录授权',
       description: `${root?.agentName ?? 'Agent'} · ${root?.displayPath ?? rootId}`,
+    });
+  },
+
+  addCustomAgent: async (payload) => {
+    const bootstrap = await api.addCustomAgent(payload);
+    set({ bootstrap });
+    await get().refreshGlobal({ announce: false });
+    const root = bootstrap.roots.find(
+      (item) => item.isCustom && item.agentName === payload.name,
+    );
+    get().pushToast({
+      tone: 'success',
+      title: '自定义 Agent 已添加',
+      description: root ? `${payload.name} · ${root.displayPath}` : payload.name,
+    });
+  },
+
+  removeCustomAgent: async (id) => {
+    const before = get().bootstrap?.roots.find((root) => root.agentId === id)?.agentName ?? id;
+    const bootstrap = await api.removeCustomAgent(id);
+    set({ bootstrap });
+    await get().refreshGlobal({ announce: false });
+    get().pushToast({
+      tone: 'info',
+      title: '已移除自定义 Agent',
+      description: `${before} · 仅移除配置，磁盘目录未删除`,
     });
   },
 

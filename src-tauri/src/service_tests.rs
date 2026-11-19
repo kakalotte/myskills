@@ -471,4 +471,125 @@ mod tests {
             ThemePreference::System
         );
     }
+
+    #[test]
+    fn custom_agent_root_is_authorized_and_can_receive_installs() {
+        let fixture = Fixture::new();
+        let agent_dir = fixture.home.join(".my-agent/skills");
+        fs::create_dir_all(&agent_dir).expect("agent dir");
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+
+        let bootstrap = fixture
+            .service
+            .add_custom_agent(AddCustomAgentPayload {
+                name: "My Agent".to_string(),
+                path: agent_dir.to_string_lossy().to_string(),
+                icon_kind: "builtin".to_string(),
+                icon_value: "cursor.svg".to_string(),
+                icon_base64: None,
+                authorized: true,
+            })
+            .expect("add custom agent");
+        let root = bootstrap
+            .roots
+            .iter()
+            .find(|root| root.is_custom)
+            .expect("custom root");
+        assert_eq!(root.agent_name, "My Agent");
+        assert!(root.authorized);
+        assert_eq!(root.icon_src.as_deref(), Some("/agent-icons/cursor.svg"));
+
+        let outcome = fixture
+            .service
+            .install_skill(InstallSkillPayload {
+                skill_name: "weekly-menu".to_string(),
+                agent_id: root.agent_id.clone(),
+                scope: ScopeKind::Global,
+                project_id: None,
+                force: false,
+            })
+            .expect("install to custom agent");
+        assert!(matches!(
+            outcome.mount_type,
+            MountType::Symlink | MountType::Copy
+        ));
+        assert!(agent_dir.join("weekly-menu").exists());
+        assert!(fixture.store().join("weekly-menu/SKILL.md").is_file());
+    }
+
+    #[test]
+    fn custom_agent_validates_input_and_remove_cleans_up_config_only() {
+        let fixture = Fixture::new();
+        let agent_dir = fixture.home.join(".my-agent/skills");
+        fs::create_dir_all(&agent_dir).expect("agent dir");
+
+        let missing = fixture
+            .service
+            .add_custom_agent(AddCustomAgentPayload {
+                name: "Missing".to_string(),
+                path: fixture
+                    .home
+                    .join("does-not-exist")
+                    .to_string_lossy()
+                    .to_string(),
+                icon_kind: "none".to_string(),
+                icon_value: String::new(),
+                icon_base64: None,
+                authorized: true,
+            })
+            .unwrap_err();
+        assert_eq!(missing.code, "PATH_MISSING");
+
+        let bootstrap = fixture
+            .service
+            .add_custom_agent(AddCustomAgentPayload {
+                name: "My Agent".to_string(),
+                path: agent_dir.to_string_lossy().to_string(),
+                icon_kind: "uploaded".to_string(),
+                icon_value: "png".to_string(),
+                icon_base64: Some("data:image/png;base64,AQID".to_string()),
+                authorized: false,
+            })
+            .expect("add custom agent with uploaded icon");
+        let root = bootstrap
+            .roots
+            .iter()
+            .find(|root| root.is_custom)
+            .expect("custom root");
+        assert!(!root.authorized);
+        assert!(
+            root.icon_src
+                .as_deref()
+                .is_some_and(|src| src.starts_with("data:image/png;base64,"))
+        );
+        let icon_path = fixture
+            .root
+            .join("custom-icons")
+            .join(format!("{}.png", root.agent_id));
+        assert!(icon_path.is_file());
+
+        let duplicate = fixture
+            .service
+            .add_custom_agent(AddCustomAgentPayload {
+                name: "My Agent".to_string(),
+                path: agent_dir.to_string_lossy().to_string(),
+                icon_kind: "none".to_string(),
+                icon_value: String::new(),
+                icon_base64: None,
+                authorized: true,
+            })
+            .unwrap_err();
+        assert_eq!(duplicate.code, "AGENT_NAME_EXISTS");
+
+        let updated = fixture
+            .service
+            .remove_custom_agent(&root.agent_id)
+            .expect("remove custom agent");
+        assert!(!updated.roots.iter().any(|root| root.is_custom));
+        assert!(!icon_path.exists());
+        assert!(
+            agent_dir.is_dir(),
+            "removal must not touch the disk directory"
+        );
+    }
 }

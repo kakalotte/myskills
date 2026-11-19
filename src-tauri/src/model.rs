@@ -63,6 +63,9 @@ pub struct Settings {
     pub active_scope: ScopeKind,
     #[serde(default)]
     pub active_project_id: Option<String>,
+    /// User-defined Agent directories. Global scope only; not part of adapters.json.
+    #[serde(default)]
+    pub custom_agents: Vec<CustomAgent>,
 }
 
 impl Default for Settings {
@@ -75,6 +78,7 @@ impl Default for Settings {
             projects: Vec::new(),
             active_scope: ScopeKind::Global,
             active_project_id: None,
+            custom_agents: Vec::new(),
         }
     }
 }
@@ -162,6 +166,12 @@ pub struct RootInfo {
     pub exists: bool,
     pub authorized: bool,
     pub skill_count: usize,
+    /// True for an Agent registered by the user rather than by adapters.json.
+    #[serde(default)]
+    pub is_custom: bool,
+    /// Image URL for a custom icon (asset path or data URL); None uses the built-in mapping.
+    #[serde(default)]
+    pub icon_src: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -357,6 +367,35 @@ pub struct RegisterProjectPayload {
     #[serde(default)]
     pub name: Option<String>,
     pub path: String,
+}
+
+/// A user-registered Agent. Icons are either a built-in asset filename
+/// (`builtin`), an uploaded file extension stored under `custom-icons/`
+/// (`uploaded`), or unset (`none`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomAgent {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub icon_kind: String,
+    #[serde(default)]
+    pub icon_value: String,
+    pub added_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddCustomAgentPayload {
+    pub name: String,
+    pub path: String,
+    pub icon_kind: String,
+    #[serde(default)]
+    pub icon_value: String,
+    /// Full `data:` URL for an uploaded icon; the backend decodes the base64 part.
+    #[serde(default)]
+    pub icon_base64: Option<String>,
+    pub authorized: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -12,19 +12,21 @@ interface AgentMarkProps {
   agentName?: string;
   size?: number;
   className?: string;
+  /** Explicit icon URL (asset path or data URL) for custom Agents. */
+  src?: string | null;
 }
 
-export function AgentMark({ agentId, agentName, size = 16, className }: AgentMarkProps) {
+export function AgentMark({ agentId, agentName, size = 16, className, src }: AgentMarkProps) {
   const [failed, setFailed] = useState(false);
-  const src = failed ? null : getAgentIconSrc(agentId);
+  const resolved = failed ? null : (src ?? getAgentIconSrc(agentId));
   // Some brand SVGs are single-ink or have a near-black tile; `styles/theme.css`
   // uses this marker to keep them legible on dark surfaces.
-  const treatment = getAgentIconTreatment(agentId);
+  const treatment = getAgentIconTreatment();
 
-  if (src) {
+  if (resolved) {
     return (
       <img
-        src={src}
+        src={resolved}
         alt=""
         aria-hidden="true"
         data-agent-icon={treatment === 'default' ? undefined : treatment}

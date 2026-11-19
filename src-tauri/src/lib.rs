@@ -51,6 +51,24 @@ async fn authorize_root(
 }
 
 #[tauri::command]
+async fn add_custom_agent(
+    state: State<'_, Arc<AppService>>,
+    payload: AddCustomAgentPayload,
+) -> CmdResult<Bootstrap> {
+    let service = state.inner().clone();
+    blocking(move || service.add_custom_agent(payload)).await
+}
+
+#[tauri::command]
+async fn remove_custom_agent(
+    state: State<'_, Arc<AppService>>,
+    id: String,
+) -> CmdResult<Bootstrap> {
+    let service = state.inner().clone();
+    blocking(move || service.remove_custom_agent(&id)).await
+}
+
+#[tauri::command]
 async fn set_theme(
     state: State<'_, Arc<AppService>>,
     theme: ThemePreference,
@@ -239,6 +257,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bootstrap,
             authorize_root,
+            add_custom_agent,
+            remove_custom_agent,
             set_theme,
             register_project,
             remove_project,

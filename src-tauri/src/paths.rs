@@ -12,6 +12,7 @@ pub struct AppPaths {
     pub manifest: PathBuf,
     pub settings: PathBuf,
     pub last_scan: PathBuf,
+    pub custom_icons: PathBuf,
 }
 
 impl AppPaths {
@@ -41,6 +42,7 @@ impl AppPaths {
             manifest: root.join("manifest.json"),
             settings: root.join("settings.json"),
             last_scan: root.join("last-scan.json"),
+            custom_icons: root.join("custom-icons"),
             home,
             root,
         }
@@ -49,6 +51,7 @@ impl AppPaths {
     pub fn ensure(&self) -> io::Result<()> {
         fs::create_dir_all(&self.store)?;
         fs::create_dir_all(&self.trash)?;
+        fs::create_dir_all(&self.custom_icons)?;
         fs::create_dir_all(&self.root)?;
         Ok(())
     }

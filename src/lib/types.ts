@@ -27,6 +27,8 @@ export interface Settings {
   /** Explicit authorization overrides. Missing => follow default (authorized when root exists/detected). */
   authorizedRoots: Record<string, boolean>;
   projects: Project[];
+  /** User-registered Agents (global scope only). */
+  customAgents: CustomAgent[];
   /** @deprecated Not used as business state. */
   activeScope: ScopeKind;
   /** @deprecated Not used as business state. */
@@ -52,6 +54,32 @@ export interface RootInfo {
   exists: boolean;
   authorized: boolean;
   skillCount: number;
+  /** User-registered Agent rather than one from adapters.json. */
+  isCustom: boolean;
+  /** Asset path or data URL for a custom icon; null uses the built-in mapping. */
+  iconSrc: string | null;
+}
+
+/** A user-registered Agent, stored in ~/.myskills/settings.json. */
+export interface CustomAgent {
+  id: string;
+  name: string;
+  path: string;
+  /** 'builtin' | 'uploaded' | 'none'. */
+  iconKind: string;
+  /** Built-in icon filename, uploaded file extension, or empty. */
+  iconValue: string;
+  addedAt: string;
+}
+
+export interface AddCustomAgentPayload {
+  name: string;
+  path: string;
+  iconKind: string;
+  iconValue: string;
+  /** Full data URL for an uploaded icon. */
+  iconBase64: string | null;
+  authorized: boolean;
 }
 
 export interface Bootstrap {

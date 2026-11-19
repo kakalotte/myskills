@@ -9,7 +9,7 @@ export function TitleBar() {
 
   return (
     <header
-      data-tauri-drag-region
+      data-tauri-drag-region="deep"
       className={`relative z-50 flex h-12 shrink-0 items-center justify-between border-b border-[color-mix(in_srgb,var(--color-outline-variant,#d7dee8)_70%,transparent)] bg-[var(--color-surface-container-lowest,#fff)] shadow-[0_1px_0_rgba(37,99,235,0.08)] ${isMacOS ? 'pl-20 pr-4' : 'px-4'}`}
     >
       <div className="flex h-full min-w-0 flex-1 items-center gap-3">
@@ -25,6 +25,7 @@ export function TitleBar() {
         <div className="flex items-center gap-1">
           <button
             type="button"
+            data-tauri-drag-region="false"
             onClick={minimize}
             disabled={!desktop}
             aria-label="最小化"
@@ -35,6 +36,7 @@ export function TitleBar() {
           </button>
           <button
             type="button"
+            data-tauri-drag-region="false"
             onClick={toggleMaximize}
             disabled={!desktop}
             aria-label={maximized ? '还原' : '最大化'}
@@ -45,6 +47,7 @@ export function TitleBar() {
           </button>
           <button
             type="button"
+            data-tauri-drag-region="false"
             onClick={close}
             disabled={!desktop}
             aria-label="关闭"

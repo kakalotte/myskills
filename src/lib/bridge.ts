@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { demoApi } from './demo';
 import type {
   Bootstrap,
+  AddCustomAgentPayload,
   BundleOutcome,
   BundleSkillPayload,
   BundlesOutcome,
@@ -82,6 +83,10 @@ async function demoCall<T>(command: string, args: Record<string, unknown> = {}):
       return (await demoApi.bootstrap()) as T;
     case 'authorize_root':
       return (await demoApi.authorizeRoot(args.rootId as string, args.authorized as boolean)) as T;
+    case 'add_custom_agent':
+      return (await demoApi.addCustomAgent(payload as unknown as AddCustomAgentPayload)) as T;
+    case 'remove_custom_agent':
+      return (await demoApi.removeCustomAgent(args.id as string)) as T;
     case 'set_theme':
       return (await demoApi.setTheme(args.theme as ThemePreference)) as T;
     case 'register_project':
@@ -129,6 +134,9 @@ export const api = {
   bootstrap: () => call<Bootstrap>('bootstrap'),
   authorizeRoot: (rootId: string, authorized: boolean) =>
     call<Bootstrap>('authorize_root', { rootId, authorized }),
+  addCustomAgent: (payload: AddCustomAgentPayload) =>
+    call<Bootstrap>('add_custom_agent', { payload }),
+  removeCustomAgent: (id: string) => call<Bootstrap>('remove_custom_agent', { id }),
   setTheme: (theme: ThemePreference) => call<Settings>('set_theme', { theme }),
   registerProject: (payload: RegisterProjectPayload) =>
     call<Project>('register_project', { payload }),

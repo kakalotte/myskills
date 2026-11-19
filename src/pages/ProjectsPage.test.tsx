@@ -30,6 +30,8 @@ const root: RootInfo = {
   exists: true,
   authorized: true,
   skillCount: 2,
+  isCustom: false,
+  iconSrc: null,
 };
 
 function bootstrapWith(projects: Project[], options: { roots?: RootInfo[] } = {}): Bootstrap {
@@ -40,6 +42,7 @@ function bootstrapWith(projects: Project[], options: { roots?: RootInfo[] } = {}
       theme: 'system',
       authorizedRoots: {},
       projects,
+      customAgents: [],
       activeScope: 'global',
       activeProjectId: null,
     },
