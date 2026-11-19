@@ -21,7 +21,7 @@ interface SkillCardProps {
   onPreview: (skill: SkillView) => void;
   onEdit: (skill: SkillView) => void;
   onOpen: (skill: SkillView) => void;
-  onImport: (skill: SkillView) => void;
+  onImport?: (skill: SkillView) => void;
   installTarget?: SkillInstallTarget;
 }
 
@@ -162,7 +162,7 @@ export function SkillCard({
             {skill.isExternal ? (
               <button
                 type="button"
-                onClick={() => onImport(skill)}
+                onClick={() => onImport?.(skill)}
                 className="flex items-center gap-1 rounded-card bg-primary-fixed px-space-sm py-1 text-body-sm font-semibold text-primary transition-colors hover:bg-primary-container hover:text-on-primary"
               >
                 <Icon name="archive" size={15} />
@@ -252,7 +252,7 @@ export function SkillCard({
                   </MenuItem>
                   <DropdownMenu.Separator className="my-1 h-px bg-outline-variant/35" />
                   {skill.isExternal ? (
-                    <MenuItem icon="archive" onSelect={() => onImport(skill)}>
+                    <MenuItem icon="archive" onSelect={() => onImport?.(skill)}>
                       纳入中央库
                     </MenuItem>
                   ) : (

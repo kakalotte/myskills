@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BundleCard } from '../components/bundles/BundleCard';
-import { ImportDialog } from '../components/home/ImportDialog';
 import { SkillCard } from '../components/home/SkillCard';
 import { SkillPreviewDialog } from '../components/home/SkillPreviewDialog';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
-import { Select } from '../components/ui/Select';
 import { api, isDemoMode } from '../lib/bridge';
 import { cn } from '../lib/format';
 import { pickDirectory, revealPath } from '../lib/platform';
 import type { Bundle, Project, SkillView } from '../lib/types';
 import { useAppStore } from '../store/app-store';
-
-type SourceFilter = 'all' | 'central' | 'external' | 'conflict';
-type SortKey = 'name' | 'mounts' | 'source';
 
 export function ProjectsPage() {
   const bootstrap = useAppStore((state) => state.bootstrap);
@@ -33,14 +28,10 @@ export function ProjectsPage() {
 
   const routeId = routeProjectId ? decodeURIComponent(routeProjectId) : null;
   const [query, setQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [showExternal, setShowExternal] = useState(false);
-  const [sort, setSort] = useState<SortKey>('name');
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [previewSkill, setPreviewSkill] = useState<SkillView | null>(null);
-  const [importTarget, setImportTarget] = useState<SkillView | null>(null);
 
   const activeProject = projects.find((p) => p.id === routeId) ?? projects[0] ?? null;
   const activeId = activeProject?.id ?? '';
@@ -102,37 +93,21 @@ export function ProjectsPage() {
     }
   }
 
-  const skills = useMemo(() => scan?.skills ?? [], [scan]);
+  const skills = useMemo(() => (scan?.skills ?? []).filter((skill) => !skill.isExternal), [scan]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const result = skills.filter((skill) => {
-      if (!showExternal && skill.isExternal) return false;
-      if (sourceFilter === 'central' && skill.isExternal) return false;
-      if (sourceFilter === 'external' && !skill.isExternal) return false;
-      if (sourceFilter === 'conflict' && !skill.badges.some((badge) => badge.state === 'conflict')) return false;
-      if (needle) {
-        const haystack = [skill.name, skill.dirName, skill.description].join(' ').toLowerCase();
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
-    result.sort((a, b) => {
-      if (sort === 'mounts') {
-        const mounts = (item: SkillView) => item.badges.filter((badge) => badge.state === 'installed').length;
-        return mounts(b) - mounts(a) || a.name.localeCompare(b.name, 'zh-CN');
-      }
-      if (sort === 'source') return a.source.localeCompare(b.source) || a.name.localeCompare(b.name, 'zh-CN');
-      return a.name.localeCompare(b.name, 'zh-CN');
-    });
-    return result;
-  }, [skills, sourceFilter, query, sort, showExternal]);
+    if (!needle) return skills;
+    return skills.filter((skill) =>
+      [skill.name, skill.dirName, skill.description].join(' ').toLowerCase().includes(needle),
+    );
+  }, [skills, query]);
 
   const filteredBundles = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return bundles.filter((bundle) => {
-      if (!needle) return true;
-      return [bundle.name, bundle.slug, bundle.description].join(' ').toLowerCase().includes(needle);
-    });
+    if (!needle) return bundles;
+    return bundles.filter((bundle) =>
+      [bundle.name, bundle.slug, bundle.description].join(' ').toLowerCase().includes(needle),
+    );
   }, [bundles, query]);
 
   const context = { scope: 'project' as const, projectId: activeId };
@@ -183,11 +158,19 @@ export function ProjectsPage() {
             </p>
           ) : null}
 
-          <div className="mt-auto flex shrink-0 flex-col gap-space-xs">
-            <Button variant="primary" size="sm" icon="add_box" loading={adding} onClick={() => void addProjectFromDirectory()}>
-              添加项目
-            </Button>
-          </div>
+          <button
+            type="button"
+            onClick={() => void addProjectFromDirectory()}
+            disabled={adding}
+            className="mt-auto flex shrink-0 items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm text-[var(--color-on-surface-variant,#5c5c5a)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-surface-container,#eef2f6)_80%,transparent)] hover:text-[var(--color-on-surface,#111827)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>添加项目</span>
+            {adding ? (
+              <Icon name="progress_activity" size={16} className="animate-spin" />
+            ) : (
+              <Icon name="add" size={16} />
+            )}
+          </button>
         </aside>
 
         <section className="flex min-w-0 flex-col gap-space-md lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -246,16 +229,6 @@ export function ProjectsPage() {
                     <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索技能或组合" className="h-full min-w-0 flex-1 bg-transparent px-space-xs text-body-sm text-on-surface outline-none" />
                     {query ? <button type="button" onClick={() => setQuery('')} aria-label="清空搜索" className="mr-space-2xs flex h-5 w-5 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"><Icon name="close" size={13} /></button> : null}
                   </label>
-                  <Select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value as SourceFilter)} icon="filter_alt" aria-label="来源筛选">
-                    <option value="all">全部来源</option><option value="central">仅中央库</option><option value="external">仅外部原件</option><option value="conflict">仅目标已占用</option>
-                  </Select>
-                  <Select value={sort} onChange={(event) => setSort(event.target.value as SortKey)} icon="sort" aria-label="排序">
-                    <option value="name">按名称</option><option value="mounts">按安装数</option><option value="source">按来源</option>
-                  </Select>
-                  <label className="flex h-8 cursor-pointer select-none items-center gap-space-xs rounded-control px-space-xs text-body-sm text-on-surface-variant transition-colors hover:text-on-surface">
-                    <input type="checkbox" checked={showExternal} onChange={(event) => { const checked = event.target.checked; setShowExternal(checked); if (!checked && sourceFilter === 'external') setSourceFilter('all'); }} className="h-3.5 w-3.5 accent-primary" />
-                    <span>加载外部 skill</span>
-                  </label>
                 </div>
               </div>
 
@@ -274,8 +247,8 @@ export function ProjectsPage() {
                 </div>
               ) : filtered.length === 0 && filteredBundles.length === 0 ? (
                 <div className="flex min-h-[320px] flex-col items-center justify-center gap-2 rounded-card bg-surface-container-lowest px-6 text-center shadow-card">
-                  <Icon name={query || sourceFilter !== 'all' || showExternal ? 'search_off' : 'inventory_2'} size={28} className="text-outline" />
-                  <p className="text-body-md font-medium text-on-surface">{query || sourceFilter !== 'all' || showExternal ? '没有匹配的技能或组合' : '当前项目暂无可用内容'}</p>
+                  <Icon name={query ? 'search_off' : 'inventory_2'} size={28} className="text-outline" />
+                  <p className="text-body-md font-medium text-on-surface">{query ? '没有匹配的技能或组合' : '当前项目暂无可用内容'}</p>
                   <p className="max-w-md text-body-sm text-on-surface-variant">可从中央库分发技能或组合到该项目的 Agent 目录。</p>
                 </div>
               ) : (
@@ -310,7 +283,6 @@ export function ProjectsPage() {
                             onPreview={(item) => setPreviewSkill(item)}
                             onEdit={(item) => navigate(`/skills/${encodeURIComponent(item.name)}/edit?scope=project&projectId=${encodeURIComponent(activeId)}`)}
                             onOpen={(item) => navigate(`/skills/${encodeURIComponent(item.name)}?scope=project&projectId=${encodeURIComponent(activeId)}`)}
-                            onImport={(item) => setImportTarget(item)}
                           />
                         ))}
                       </div>
@@ -324,7 +296,6 @@ export function ProjectsPage() {
       </div>
 
       <SkillPreviewDialog skill={previewSkill} context={context} onClose={() => setPreviewSkill(null)} />
-      <ImportDialog skill={importTarget} context={context} onClose={() => setImportTarget(null)} />
     </div>
   );
 }

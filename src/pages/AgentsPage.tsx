@@ -57,7 +57,6 @@ export function AgentsPage() {
   const activeRoot = agents.find((root) => root.agentId === selectedAgentId) ?? agents[0] ?? null;
   const activeRootId = activeRoot?.id ?? null;
 
-  // External skills cannot be installed directly, so this page only lists central-library skills.
   const skills = useMemo(() => (scan?.skills ?? []).filter((skill) => !skill.isExternal), [scan]);
 
   const filtered = useMemo(() => {
@@ -89,7 +88,7 @@ export function AgentsPage() {
         if (!onlyUninstalled || !activeRootId) return true;
         const members = bundle.skillNames
           .map((name) => skillMap.get(name))
-          .filter((s): s is SkillView => s != null && !s.isExternal);
+          .filter((s): s is SkillView => s != null);
         if (members.length === 0) return true;
         const allInstalled = members.every(
           (member) => member.badges.find((item) => item.rootId === activeRootId)?.state === 'installed',
@@ -217,7 +216,7 @@ export function AgentsPage() {
                     <input
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      placeholder="搜索技能"
+                      placeholder="搜索技能或组合"
                       className="h-full min-w-0 flex-1 bg-transparent px-space-xs text-body-sm text-on-surface outline-none"
                     />
                     {query ? (
@@ -356,7 +355,6 @@ export function AgentsPage() {
                             onPreview={(item) => setPreviewSkill(item)}
                             onEdit={(item) => navigate(`/skills/${encodeURIComponent(item.name)}/edit`)}
                             onOpen={(item) => navigate(`/skills/${encodeURIComponent(item.name)}`)}
-                            onImport={() => undefined}
                           />
                         ))}
                       </div>

@@ -91,7 +91,7 @@ export function SettingsAboutPage() {
             <img src="/logo/logo.svg" alt="" aria-hidden="true" className="h-10 w-10" draggable={false} />
           </span>
           <div className="flex flex-col items-center gap-space-xs">
-            <h2 className="text-headline-lg tracking-tight text-on-surface">mySkills Desktop</h2>
+            <h2 className="text-headline-lg tracking-tight text-on-surface">mySkills</h2>
             <p className="max-w-md text-body-md leading-relaxed text-on-surface-variant">
               本地管理个人 Skills，快捷部署到每个 Agent
             </p>
