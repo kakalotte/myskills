@@ -5,13 +5,20 @@ import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { Modal } from '../../components/ui/Modal';
 import { AGENT_ICON_DIR, AGENT_ICON_FILES } from '../../lib/agentIcons';
+import { LOBE_ICONS } from '../../lib/lobeIcons.generated';
 import { cn } from '../../lib/format';
 import { pickDirectory } from '../../lib/platform';
 import type { RootInfo } from '../../lib/types';
 import { useAppStore } from '../../store/app-store';
 
-const presetIcons = Array.from(new Set(Object.values(AGENT_ICON_FILES)));
-const defaultIcon = AGENT_ICON_FILES.workbuddy ?? presetIcons[0] ?? '';
+type IconOption = { file: string; name: string };
+
+const coreIcons: IconOption[] = Array.from(new Set(Object.values(AGENT_ICON_FILES))).map((file) => ({
+  file,
+  name: file.replace(/\.(svg|png)$/, ''),
+}));
+const extraIcons: IconOption[] = LOBE_ICONS.map((icon) => ({ file: icon.file, name: icon.name }));
+const defaultIcon = AGENT_ICON_FILES.workbuddy ?? coreIcons[0]?.file ?? '';
 
 function RootRow({
   root,
@@ -109,6 +116,7 @@ function AddAgentForm({ onClose }: { onClose: () => void }) {
   const [iconValue, setIconValue] = useState('');
   const [iconBase64, setIconBase64] = useState<string | null>(null);
   const [showBuiltinPicker, setShowBuiltinPicker] = useState(false);
+  const [iconSearch, setIconSearch] = useState('');
   const [authorized, setAuthorized] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -300,27 +308,59 @@ function AddAgentForm({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             {showBuiltinPicker ? (
-              <div className="grid max-h-48 grid-cols-8 gap-1 overflow-y-auto rounded-card bg-surface-container-low p-space-sm">
-                {presetIcons.map((file) => (
-                  <button
-                    key={file}
-                    type="button"
-                    onClick={() => {
-                      setIconValue(file);
-                      setIconBase64(null);
-                    }}
-                    title={file}
-                    aria-label={`选择图标 ${file}`}
-                    className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-control transition-colors',
-                      iconValue === file
-                        ? 'bg-primary-fixed ring-1 ring-primary'
-                        : 'hover:bg-surface-container',
-                    )}
-                  >
-                    <img src={`${AGENT_ICON_DIR}${file}`} alt="" className="h-6 w-6 object-contain" />
-                  </button>
-                ))}
+              <div className="flex flex-col gap-space-sm">
+                <input
+                  value={iconSearch}
+                  onChange={(event) => setIconSearch(event.target.value)}
+                  placeholder="搜索图标名称…"
+                  className="h-8 w-full rounded-control border border-outline-variant/60 bg-surface-container-lowest px-space-sm text-sm text-on-surface outline-none transition-colors placeholder:text-outline focus:border-primary"
+                />
+                <div className="flex max-h-56 flex-col gap-space-sm overflow-y-auto rounded-card bg-surface-container-low p-space-sm">
+                  {(() => {
+                    const q = iconSearch.trim().toLowerCase();
+                    const match = (option: IconOption) =>
+                      !q || option.name.toLowerCase().includes(q) || option.file.toLowerCase().includes(q);
+                    const core = coreIcons.filter(match);
+                    const extra = extraIcons.filter(match);
+                    const renderGroup = (label: string, options: IconOption[]) =>
+                      options.length > 0 ? (
+                        <div className="flex flex-col gap-space-xs">
+                          <span className="font-caption-caps uppercase text-on-surface-variant">{label}</span>
+                          <div className="grid grid-cols-8 gap-1">
+                            {options.map((option) => (
+                              <button
+                                key={option.file}
+                                type="button"
+                                onClick={() => {
+                                  setIconValue(option.file);
+                                  setIconBase64(null);
+                                }}
+                                title={option.name}
+                                aria-label={`选择图标 ${option.file}`}
+                                className={cn(
+                                  'flex h-9 w-9 items-center justify-center rounded-control transition-colors',
+                                  iconValue === option.file
+                                    ? 'bg-primary-fixed ring-1 ring-primary'
+                                    : 'hover:bg-surface-container',
+                                )}
+                              >
+                                <img src={`${AGENT_ICON_DIR}${option.file}`} alt="" className="h-6 w-6 object-contain" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    if (core.length === 0 && extra.length === 0) {
+                      return <p className="py-space-md text-center text-body-sm text-on-surface-variant">未找到匹配的图标</p>;
+                    }
+                    return (
+                      <>
+                        {renderGroup('内置图标', core)}
+                        {renderGroup('更多 Lobe Icons', extra)}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             ) : null}
           </div>
