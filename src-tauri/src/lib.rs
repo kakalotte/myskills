@@ -291,8 +291,9 @@ pub fn run() {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_millis(400));
+                    let main_handle = handle.clone();
                     let _ = handle.run_on_main_thread(move || {
-                        nudge_webview_repaint(&handle);
+                        nudge_webview_repaint(&main_handle);
                     });
                 });
             }
