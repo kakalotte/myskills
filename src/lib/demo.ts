@@ -30,6 +30,7 @@ import type {
   ThemePreference,
   UninstallSkillPayload,
   UpdateBundlePayload,
+  UpdateSettings,
 } from './types';
 
 const now = () => new Date().toISOString();
@@ -40,6 +41,13 @@ const authorizedOverrides: Record<string, boolean> = {
 };
 
 let theme: ThemePreference = 'system';
+let updateSettings: UpdateSettings = {
+  autoCheck: true,
+  lastCheckedAt: null,
+  latestVersion: null,
+  skippedVersion: null,
+  lastNotifiedVersion: null,
+};
 
 function effectiveAuthorized(rootId: string, exists: boolean): boolean {
   return authorizedOverrides[rootId] ?? exists;
@@ -165,6 +173,7 @@ function buildBootstrap(): Bootstrap {
       customAgents: [...customAgents],
       activeScope: 'global',
       activeProjectId: null,
+      update: { ...updateSettings },
     },
     roots: allRoots(),
     agents: [
@@ -178,7 +187,7 @@ function buildBootstrap(): Bootstrap {
     ],
     centralStorePath: '/demo/home/.myskills/store',
     centralStoreDisplay: '~/.myskills/store',
-    appVersion: '0.1.0-demo',
+    appVersion: '0.4.1',
   };
 }
 
@@ -367,6 +376,10 @@ export const demoApi = {
   },
   setTheme: async (value: ThemePreference): Promise<Settings> => {
     theme = value;
+    return buildBootstrap().settings;
+  },
+  saveUpdateSettings: async (payload: UpdateSettings): Promise<Settings> => {
+    updateSettings = { ...payload };
     return buildBootstrap().settings;
   },
   registerProject: async (payload: RegisterProjectPayload): Promise<Project> => {
@@ -582,6 +595,9 @@ export const demoApi = {
     skillName: payload.skillName,
     displayPath: `~/.myskills/store/${payload.skillName}/SKILL.md`,
     message: '演示模式：SKILL.md 已保存',
+    resynced: 0,
+    unchanged: 0,
+    refused: [],
   }),
   createSkill: async (payload: CreateSkillPayload): Promise<CreateSkillOutcome> => {
     const name = payload.name.trim();

@@ -45,6 +45,13 @@ function bootstrapWith(projects: Project[], options: { roots?: RootInfo[] } = {}
       customAgents: [],
       activeScope: 'global',
       activeProjectId: null,
+      update: {
+        autoCheck: false,
+        lastCheckedAt: null,
+        latestVersion: null,
+        skippedVersion: null,
+        lastNotifiedVersion: null,
+      },
     },
     roots: options.roots ?? [],
     agents: [],
@@ -117,7 +124,13 @@ describe('ProjectsPage', () => {
   beforeEach(() => {
     vi.mocked(pickDirectory).mockReset();
     vi.restoreAllMocks();
-    useAppStore.setState({ bootstrap: null, toasts: [], projectScans: {}, projectScanning: {}, projectScanErrors: {} } as never);
+    useAppStore.setState({
+      bootstrap: null,
+      toasts: [],
+      projectScans: {},
+      projectScanning: {},
+      projectScanErrors: {},
+    } as never);
   });
 
   it('registers the picked directory and selects the project module', async () => {
@@ -185,7 +198,9 @@ describe('ProjectsPage', () => {
 
     await user.click(screen.getByRole('button', { name: /演示项目/ }));
 
-    expect(screen.getByTestId('location')).toHaveTextContent(`/projects/${encodeURIComponent(project.id)}`);
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/projects/${encodeURIComponent(project.id)}`,
+    );
   });
 
   it('removes a project after confirmation', async () => {

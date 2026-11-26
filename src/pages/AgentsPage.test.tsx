@@ -121,6 +121,13 @@ const bootstrap: Bootstrap = {
     customAgents: [],
     activeScope: 'global',
     activeProjectId: null,
+    update: {
+      autoCheck: false,
+      lastCheckedAt: null,
+      latestVersion: null,
+      skippedVersion: null,
+      lastNotifiedVersion: null,
+    },
   },
   roots: [claudeRoot, workbuddyRoot, unauthorizedRoot, missingRoot],
   agents: [],

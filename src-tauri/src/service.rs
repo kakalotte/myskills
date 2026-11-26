@@ -23,6 +23,35 @@ struct LastScanFile {
     scopes: BTreeMap<String, BTreeMap<String, String>>,
 }
 
+/// Result of bringing stale copy mounts back in sync with the central library.
+#[derive(Debug, Default)]
+struct ResyncSummary {
+    updated: usize,
+    unchanged: usize,
+    /// Stale records whose target has disappeared; they must be dropped so a
+    /// previous uninstall is not silently undone by a later scan.
+    removed: usize,
+    refused: Vec<String>,
+}
+
+/// What is currently sitting at a deployment target, classified without
+/// following links (mirrors skills-manager's TargetState, simplified).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TargetState {
+    Absent,
+    LinkToSource,
+    ForeignLink,
+    RealDir,
+    RealFile,
+}
+
+/// Trim an optional string and treat blank values as absent.
+fn normalize_optional(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
 pub struct AppService {
     pub paths: AppPaths,
     lock: Mutex<()>,
@@ -53,6 +82,10 @@ impl AppService {
         let mut manifest: Manifest = read_json_or(&service.paths.manifest, Manifest::default())?;
         let mut dirty_settings = service.repair_scope(&mut settings);
         let mut dirty_manifest = !service.paths.manifest.exists();
+        if manifest.schema_version < MANIFEST_SCHEMA_VERSION {
+            manifest.schema_version = MANIFEST_SCHEMA_VERSION;
+            dirty_manifest = true;
+        }
         let migrated = service.migrate_legacy_agent_ids(&mut settings, &mut manifest);
         dirty_settings |= migrated;
         dirty_manifest |= migrated;
@@ -113,6 +146,23 @@ impl AppService {
         let mut settings = self.load_settings()?;
         if settings.theme != theme {
             settings.theme = theme;
+            self.save_settings(&settings)?;
+        }
+        Ok(settings)
+    }
+
+    pub fn save_update_settings(&self, update: UpdateSettings) -> CmdResult<Settings> {
+        let _guard = self.lock()?;
+        let mut settings = self.load_settings()?;
+        let update = UpdateSettings {
+            auto_check: update.auto_check,
+            last_checked_at: normalize_optional(update.last_checked_at),
+            latest_version: normalize_optional(update.latest_version),
+            skipped_version: normalize_optional(update.skipped_version),
+            last_notified_version: normalize_optional(update.last_notified_version),
+        };
+        if settings.update != update {
+            settings.update = update;
             self.save_settings(&settings)?;
         }
         Ok(settings)
@@ -369,6 +419,10 @@ impl AppService {
         let mut manifest = self.load_manifest()?;
         let mut manifest_dirty = false;
 
+        // Convergence: bring stale copy mounts back to the current central content.
+        let (_, recon_dirty) = self.reconcile_copy_mounts(&mut manifest)?;
+        manifest_dirty |= recon_dirty;
+
         // Authorization controls visibility in other modules. Filesystem scan/IO still requires exists.
         let active_roots: Vec<RootInfo> = context_roots
             .into_iter()
@@ -424,6 +478,7 @@ impl AppService {
                             source: SkillSource::Builtin,
                             created_at: stamp.clone(),
                             updated_at: stamp,
+                            content_hash: dir_fingerprint(&path).ok(),
                         };
                         manifest.skills.push(meta.clone());
                         manifest_dirty = true;
@@ -503,8 +558,7 @@ impl AppService {
                 };
 
                 let managed_copy = manifest.installations.iter().any(|installation| {
-                    installation.root_id == root.id
-                        && installation.skill_name == parsed.name
+                    installation.skill_name == parsed.name
                         && installation.mount_type == MountType::Copy
                         && path_key(Path::new(&installation.target_path)) == path_key(&path)
                 });
@@ -847,13 +901,17 @@ impl AppService {
             ));
         };
         self.ensure_skill_meta(&mut manifest, &parsed.name)?;
+        let central_hash = dir_fingerprint(&central_dir)?;
+        if let Some(meta) = manifest.skill_mut(&parsed.name) {
+            meta.content_hash = Some(central_hash.clone());
+        }
 
         // same-name handling: a managed mount is a no-op; any other existing entry blocks
         // the mount unless the caller explicitly confirmed replacing it.
         let target = PathBuf::from(&root.path).join(&dir_name);
         let mut replaced_display: Option<String> = None;
         if root.exists && target.exists() {
-            if self.is_managed_mount(&target, &root, &parsed.name, &manifest, &central_dir) {
+            if self.is_managed_mount(&target, &parsed.name, &manifest, &central_dir) {
                 let mount_type =
                     if fs::symlink_metadata(&target).is_ok_and(|m| m.file_type().is_symlink()) {
                         MountType::Symlink
@@ -904,10 +962,10 @@ impl AppService {
             copy_dir_all(&central_dir, &target)?;
         }
 
-        // update installation record
+        // update installation record — keyed by physical path so a shared
+        // skills directory has a single mount record regardless of agent id.
         manifest.installations.retain(|i| {
             !(i.skill_name == parsed.name
-                && i.root_id == root.id
                 && path_key(Path::new(&i.target_path)) == path_key(&target))
         });
         let target_fingerprint = if mount_type == MountType::Copy {
@@ -927,6 +985,7 @@ impl AppService {
             mount_type,
             target_path: target.to_string_lossy().to_string(),
             target_fingerprint,
+            source_hash: Some(central_hash),
             installed_at: now(),
         });
         if let Some(meta) = manifest.skill_mut(&parsed.name) {
@@ -1098,8 +1157,40 @@ impl AppService {
         };
 
         let target = PathBuf::from(&root.path).join(&dir_name);
-        if !target.exists() {
-            return Err(CmdError::new("NOT_INSTALLED", "未找到该安装"));
+        if fs::symlink_metadata(&target).is_err() {
+            // Nothing on disk. A leftover installation record here means an
+            // earlier uninstall was interrupted; clear it instead of leaving a
+            // stale mount that a later scan could recreate.
+            let record_mount_type = manifest
+                .installations
+                .iter()
+                .find(|i| {
+                    i.skill_name == parsed.name
+                        && path_key(Path::new(&i.target_path)) == path_key(&target)
+                })
+                .map(|i| i.mount_type)
+                .unwrap_or(MountType::Copy);
+            let before = manifest.installations.len();
+            manifest.installations.retain(|i| {
+                !(i.skill_name == parsed.name
+                    && path_key(Path::new(&i.target_path)) == path_key(&target))
+            });
+            if manifest.installations.len() == before {
+                return Err(CmdError::new("NOT_INSTALLED", "未找到该安装")
+                    .with_detail(self.paths.display(&target)));
+            }
+            self.save_manifest(&manifest)?;
+            return Ok(MountOutcome {
+                skill_name: parsed.name,
+                agent_id: adapters::canonical_agent_id(agent_id).to_string(),
+                action: "uninstall".to_string(),
+                mount_type: record_mount_type,
+                target_display: self.paths.display(&target),
+                already_installed: false,
+                message: "已清理残留安装记录，中央库原件未受影响".to_string(),
+                replaced: false,
+                replaced_display: None,
+            });
         }
 
         let is_symlink = fs::symlink_metadata(&target).is_ok_and(|m| m.file_type().is_symlink());
@@ -1119,14 +1210,18 @@ impl AppService {
                 return Err(CmdError::new(
                     "NOT_MANAGED",
                     "该符号链接不由 mySkills 管理，已中止卸载",
-                ));
+                )
+                .with_detail(format!(
+                    "{} · {}",
+                    root.agent_name,
+                    self.paths.display(&target)
+                )));
             }
             remove_symlink(&target)?;
         } else {
             // copy mount: must be managed and check drift
             let record = manifest.installations.iter().find(|i| {
                 i.skill_name == parsed.name
-                    && i.root_id == root.id
                     && i.mount_type == MountType::Copy
                     && path_key(Path::new(&i.target_path)) == path_key(&target)
             });
@@ -1134,7 +1229,12 @@ impl AppService {
                 return Err(CmdError::new(
                     "NOT_MANAGED",
                     "该目录不是由 mySkills 管理的副本安装，已中止卸载",
-                ));
+                )
+                .with_detail(format!(
+                    "{} · {}",
+                    root.agent_name,
+                    self.paths.display(&target)
+                )));
             }
             let current_fp = dir_fingerprint(&target)?;
             let modified = record
@@ -1169,7 +1269,6 @@ impl AppService {
 
         manifest.installations.retain(|i| {
             !(i.skill_name == parsed.name
-                && i.root_id == root.id
                 && path_key(Path::new(&i.target_path)) == path_key(&target))
         });
         if let Some(meta) = manifest.skill_mut(&parsed.name) {
@@ -1232,8 +1331,7 @@ impl AppService {
                 }
                 if let Ok(parsed) = read_skill_dir(&path, &dir_name) {
                     let managed_copy = manifest.installations.iter().any(|i| {
-                        i.root_id == root.id
-                            && i.skill_name == parsed.name
+                        i.skill_name == parsed.name
                             && i.mount_type == MountType::Copy
                             && path_key(Path::new(&i.target_path)) == path_key(&path)
                     });
@@ -1272,6 +1370,7 @@ impl AppService {
             source: SkillSource::Imported,
             created_at: stamp.clone(),
             updated_at: stamp.clone(),
+            content_hash: dir_fingerprint(&target_dir).ok(),
         });
         self.save_manifest(&manifest)?;
 
@@ -1304,11 +1403,13 @@ impl AppService {
         }
 
         write_file(&path.join("SKILL.md"), payload.raw.as_bytes())?;
+        let central_hash = dir_fingerprint(&path)?;
 
         if new_name != existing.name {
             if let Some(meta) = manifest.skill_mut(&existing.name) {
                 meta.name = new_name.clone();
                 meta.updated_at = now();
+                meta.content_hash = Some(central_hash.clone());
             }
             for inst in &mut manifest.installations {
                 if inst.skill_name == existing.name {
@@ -1317,15 +1418,28 @@ impl AppService {
             }
         } else if let Some(meta) = manifest.skill_mut(&existing.name) {
             meta.updated_at = now();
+            meta.content_hash = Some(central_hash.clone());
         } else {
             self.ensure_skill_meta(&mut manifest, &existing.name)?;
+            if let Some(meta) = manifest.skill_mut(&existing.name) {
+                meta.content_hash = Some(central_hash.clone());
+            }
         }
+        let resync = self.resync_stale_copies(&mut manifest, &new_name, &path, &central_hash)?;
         self.save_manifest(&manifest)?;
 
+        let message = if resync.updated > 0 {
+            format!("SKILL.md 已保存 · 已同步 {} 处副本", resync.updated)
+        } else {
+            "SKILL.md 已保存".to_string()
+        };
         Ok(SaveSkillOutcome {
             skill_name: new_name,
             display_path: self.paths.display(&path.join("SKILL.md")),
-            message: "SKILL.md 已保存".to_string(),
+            message,
+            resynced: resync.updated,
+            unchanged: resync.unchanged,
+            refused: resync.refused,
         })
     }
 
@@ -1366,6 +1480,7 @@ impl AppService {
             source: SkillSource::Builtin,
             created_at: stamp.clone(),
             updated_at: stamp.clone(),
+            content_hash: dir_fingerprint(&dir).ok(),
         });
         self.save_manifest(&manifest)?;
 
@@ -2034,8 +2149,188 @@ impl AppService {
             source: SkillSource::Builtin,
             created_at: stamp.clone(),
             updated_at: stamp,
+            content_hash: self
+                .find_central_skill(name)
+                .ok()
+                .flatten()
+                .and_then(|(path, _, _)| dir_fingerprint(&path).ok()),
         });
         Ok(())
+    }
+
+    /// Classify what is on disk at `target` without following links.
+    fn classify_target(&self, target: &Path, source: &Path) -> TargetState {
+        let metadata = match fs::symlink_metadata(target) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return TargetState::Absent;
+            }
+            Err(_) => return TargetState::ForeignLink,
+        };
+        if metadata.file_type().is_symlink() {
+            let ours = target
+                .canonicalize()
+                .map(|canonical| path_key(&canonical) == path_key(&canonical_for_compare(source)))
+                .unwrap_or(false);
+            return if ours {
+                TargetState::LinkToSource
+            } else {
+                TargetState::ForeignLink
+            };
+        }
+        if metadata.is_dir() {
+            TargetState::RealDir
+        } else {
+            TargetState::RealFile
+        }
+    }
+
+    /// Move a drifted/stale copy into the trash so it can be recovered.
+    fn move_to_trash(&self, target: &Path, dir_name: &str, agent_label: &str) -> CmdResult<()> {
+        let trash_dir = self.paths.trash.join(format!(
+            "{}_{}_{}",
+            dir_name,
+            agent_label,
+            short_hash(&now())
+        ));
+        if let Some(parent) = trash_dir.parent() {
+            fs::create_dir_all(parent).map_err(|error| CmdError::io("无法创建回收目录", error))?;
+        }
+        fs::rename(target, &trash_dir).or_else(|_| {
+            copy_dir_all(target, &trash_dir)?;
+            fs::remove_dir_all(target).map_err(|error| CmdError::io("无法移除副本", error))
+        })
+    }
+
+    /// Bring copy mounts of one skill back in sync with the central library.
+    /// Symlink mounts need no action: they point at the central directory.
+    fn resync_stale_copies(
+        &self,
+        manifest: &mut Manifest,
+        skill_name: &str,
+        central_dir: &Path,
+        central_hash: &str,
+    ) -> CmdResult<ResyncSummary> {
+        let mut summary = ResyncSummary::default();
+        let mut removed_ids: Vec<String> = Vec::new();
+        for index in 0..manifest.installations.len() {
+            if manifest.installations[index].skill_name != skill_name
+                || manifest.installations[index].mount_type != MountType::Copy
+            {
+                continue;
+            }
+            let target = PathBuf::from(&manifest.installations[index].target_path);
+            let state = self.classify_target(&target, central_dir);
+            if manifest.installations[index].source_hash.as_deref() == Some(central_hash)
+                && state != TargetState::Absent
+            {
+                summary.unchanged += 1;
+                continue;
+            }
+            match state {
+                TargetState::LinkToSource => {
+                    // Converted to a symlink by the user: already live, leave it alone.
+                    summary.unchanged += 1;
+                }
+                TargetState::ForeignLink | TargetState::RealFile => {
+                    summary.refused.push(self.paths.display(&target));
+                }
+                TargetState::Absent => {
+                    // The mount is gone (manual removal or an earlier
+                    // uninstall). Recreating it would resurrect something the
+                    // user already removed, so just drop the stale record.
+                    removed_ids.push(manifest.installations[index].id.clone());
+                    summary.removed += 1;
+                }
+                TargetState::RealDir => {
+                    let current_fp = dir_fingerprint(&target)?;
+                    if manifest.installations[index].target_fingerprint.as_deref()
+                        != Some(&current_fp)
+                    {
+                        let agent = manifest.installations[index].agent_id.clone();
+                        let dir_name = target
+                            .file_name()
+                            .map(|value| value.to_string_lossy().to_string())
+                            .unwrap_or_else(|| skill_name.to_string());
+                        self.move_to_trash(&target, &dir_name, &agent)?;
+                    } else {
+                        fs::remove_dir_all(&target)
+                            .map_err(|error| CmdError::io("无法移除旧副本", error))?;
+                    }
+                    copy_dir_all(central_dir, &target)?;
+                    self.update_mount_hashes(
+                        &mut manifest.installations[index],
+                        &target,
+                        central_hash,
+                    )?;
+                    summary.updated += 1;
+                }
+            }
+        }
+        if !removed_ids.is_empty() {
+            manifest
+                .installations
+                .retain(|installation| !removed_ids.contains(&installation.id));
+        }
+        Ok(summary)
+    }
+
+    fn update_mount_hashes(
+        &self,
+        installation: &mut Installation,
+        target: &Path,
+        central_hash: &str,
+    ) -> CmdResult<()> {
+        installation.source_hash = Some(central_hash.to_string());
+        installation.target_fingerprint = Some(dir_fingerprint(target)?);
+        installation.installed_at = now();
+        Ok(())
+    }
+
+    /// Startup/scan convergence: refresh every stale copy mount using the
+    /// content hash stored in the manifest (computed on demand if missing).
+    fn reconcile_copy_mounts(&self, manifest: &mut Manifest) -> CmdResult<(ResyncSummary, bool)> {
+        let mut summary = ResyncSummary::default();
+        let mut dirty = false;
+        let names: Vec<String> = manifest
+            .installations
+            .iter()
+            .filter(|installation| installation.mount_type == MountType::Copy)
+            .map(|installation| installation.skill_name.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        for name in names {
+            let hash = match manifest
+                .skill(&name)
+                .and_then(|meta| meta.content_hash.clone())
+            {
+                Some(hash) => hash,
+                None => match self.find_central_skill(&name)? {
+                    Some((path, _, _)) => {
+                        let hash = dir_fingerprint(&path)?;
+                        if let Some(meta) = manifest.skill_mut(&name) {
+                            meta.content_hash = Some(hash.clone());
+                            dirty = true;
+                        }
+                        hash
+                    }
+                    None => continue,
+                },
+            };
+            let Some((central_dir, _, _)) = self.find_central_skill(&name)? else {
+                continue;
+            };
+            let part = self.resync_stale_copies(manifest, &name, &central_dir, &hash)?;
+            summary.updated += part.updated;
+            summary.unchanged += part.unchanged;
+            summary.removed += part.removed;
+            summary.refused.extend(part.refused);
+            if part.updated > 0 || part.removed > 0 {
+                dirty = true;
+            }
+        }
+        Ok((summary, dirty))
     }
 
     fn find_central_skill(&self, name: &str) -> CmdResult<Option<(PathBuf, ParsedSkill, String)>> {
@@ -2090,7 +2385,6 @@ impl AppService {
     fn is_managed_mount(
         &self,
         target: &Path,
-        root: &RootInfo,
         skill_name: &str,
         manifest: &Manifest,
         central_dir: &Path,
@@ -2106,8 +2400,7 @@ impl AppService {
                 .unwrap_or(false);
         }
         manifest.installations.iter().any(|installation| {
-            installation.root_id == root.id
-                && installation.skill_name == skill_name
+            installation.skill_name == skill_name
                 && path_key(Path::new(&installation.target_path)) == path_key(target)
         })
     }
@@ -2174,15 +2467,14 @@ impl AppService {
             },
             Ok(_) => {
                 let managed = manifest.installations.iter().any(|installation| {
-                    installation.root_id == root.id
-                        && installation.skill_name == skill.name
+                    installation.skill_name == skill.name
                         && installation.mount_type == MountType::Copy
                         && path_key(Path::new(&installation.target_path)) == path_key(&target)
                 });
                 if managed {
                     badge.state = BadgeState::Installed;
                     badge.mount_type = Some(MountType::Copy);
-                    badge.detail = Some("副本安装（中央库编辑后需手动同步）".to_string());
+                    badge.detail = Some("副本安装（中央库编辑后自动同步）".to_string());
                 } else if external_conflict {
                     badge.state = BadgeState::Conflict;
                     badge.detail = Some("目标目录已是外部同名技能，可覆盖安装".to_string());

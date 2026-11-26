@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../lib/bridge';
+import { checkForUpdates as runUpdateCheck } from '../lib/update';
 import type { Bootstrap, MountOutcome, ScanResult } from '../lib/types';
+
+vi.mock('../lib/update', async () => {
+  const actual = await vi.importActual<typeof import('../lib/update')>('../lib/update');
+  return { ...actual, checkForUpdates: vi.fn() };
+});
 
 vi.mock('../lib/bridge', async () => {
   const actual = await vi.importActual<typeof import('../lib/bridge')>('../lib/bridge');
@@ -16,6 +22,7 @@ vi.mock('../lib/bridge', async () => {
       installSkill: vi.fn(),
       uninstallSkill: vi.fn(),
       importSkill: vi.fn(),
+      saveUpdateSettings: vi.fn(),
     },
   };
 });
@@ -32,6 +39,13 @@ const bootstrap: Bootstrap = {
     customAgents: [],
     activeScope: 'global',
     activeProjectId: null,
+    update: {
+      autoCheck: false,
+      lastCheckedAt: null,
+      latestVersion: null,
+      skippedVersion: null,
+      lastNotifiedVersion: null,
+    },
   },
   roots: [
     {
@@ -89,6 +103,7 @@ const mountOutcome: MountOutcome = {
 
 describe('app store', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     useAppStore.setState({
       bootstrap: null,
       loading: true,
@@ -100,6 +115,9 @@ describe('app store', () => {
       projectScanning: {},
       projectScanErrors: {},
       toasts: [],
+      updateInfo: null,
+      updateChecking: false,
+      updateError: null,
     });
     vi.mocked(api.bootstrap).mockResolvedValue(bootstrap);
     vi.mocked(api.scanSkills).mockResolvedValue(scan);
@@ -162,5 +180,87 @@ describe('app store', () => {
       scope: 'global',
       force: false,
     });
+  });
+
+  it('announces a new version once and remembers it in settings', async () => {
+    const withAutoCheck: Bootstrap = {
+      ...bootstrap,
+      settings: {
+        ...bootstrap.settings,
+        update: { ...bootstrap.settings.update, autoCheck: true },
+      },
+    };
+    useAppStore.setState({ bootstrap: withAutoCheck, loading: false });
+    vi.mocked(runUpdateCheck).mockResolvedValue({
+      currentVersion: '0.1.0',
+      latestVersion: '0.5.0',
+      updateAvailable: true,
+      releaseUrl: 'https://github.com/kakalotte/myskills/releases/tag/v0.5.0',
+      publishedAt: '2026-11-24T09:00:00Z',
+      checkedAt: '2026-11-26T09:00:00.000Z',
+    });
+    vi.mocked(api.saveUpdateSettings).mockImplementation(async (payload) => ({
+      ...useAppStore.getState().bootstrap!.settings,
+      update: payload,
+    }));
+
+    await useAppStore.getState().checkForUpdates({ manual: false });
+    expect(api.saveUpdateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastCheckedAt: '2026-11-26T09:00:00.000Z',
+        latestVersion: '0.5.0',
+        lastNotifiedVersion: '0.5.0',
+      }),
+    );
+    expect(useAppStore.getState().updateInfo?.latestVersion).toBe('0.5.0');
+    expect(useAppStore.getState().toasts.at(-1)?.title).toContain('0.5.0');
+
+    const count = useAppStore.getState().toasts.length;
+    await useAppStore.getState().checkForUpdates({ manual: false });
+    expect(useAppStore.getState().toasts).toHaveLength(count);
+  });
+
+  it('does not auto-check again within 24 hours', () => {
+    const recent: Bootstrap = {
+      ...bootstrap,
+      settings: {
+        ...bootstrap.settings,
+        update: {
+          ...bootstrap.settings.update,
+          autoCheck: true,
+          lastCheckedAt: new Date().toISOString(),
+        },
+      },
+    };
+    useAppStore.setState({ bootstrap: recent, loading: false });
+    useAppStore.getState().maybeAutoCheckUpdates();
+    expect(runUpdateCheck).not.toHaveBeenCalled();
+  });
+
+  it('keeps automatic failures quiet but reports manual ones', async () => {
+    useAppStore.setState({ bootstrap, loading: false });
+    vi.mocked(runUpdateCheck).mockRejectedValue({
+      code: 'UPDATE_OFFLINE',
+      message: '无法连接到 GitHub，请检查网络后重试',
+    });
+    await useAppStore.getState().checkForUpdates({ manual: false });
+    expect(useAppStore.getState().toasts).toHaveLength(0);
+    expect(useAppStore.getState().updateError?.code).toBe('UPDATE_OFFLINE');
+
+    await useAppStore.getState().checkForUpdates({ manual: true });
+    expect(useAppStore.getState().toasts.at(-1)?.title).toBe('检查更新失败');
+  });
+
+  it('persists a skipped version', async () => {
+    useAppStore.setState({ bootstrap, loading: false });
+    vi.mocked(api.saveUpdateSettings).mockImplementation(async (payload) => ({
+      ...useAppStore.getState().bootstrap!.settings,
+      update: payload,
+    }));
+    await useAppStore.getState().skipUpdateVersion('0.5.0');
+    expect(api.saveUpdateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ skippedVersion: '0.5.0' }),
+    );
+    expect(useAppStore.getState().bootstrap?.settings.update.skippedVersion).toBe('0.5.0');
   });
 });

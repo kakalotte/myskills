@@ -22,13 +22,9 @@ pub struct AdapterDef {
     pub detect_dir: String,
     pub project_dir: String,
     #[serde(default)]
-    pub extra_scan_dirs: Vec<String>,
-    #[serde(default)]
     pub recursive_scan: bool,
     #[serde(default)]
     pub windows_global_dir: Option<String>,
-    #[serde(default)]
-    pub shared_discovery_only: bool,
     #[serde(default)]
     pub scopes: Vec<String>,
     #[serde(default)]
@@ -83,19 +79,6 @@ impl AdapterDef {
             }
         }
         out
-    }
-
-    /// Additional global directories to scan (read-only discovery), if any.
-    pub fn extra_global_scan_paths(&self, paths: &AppPaths) -> Vec<(PathBuf, bool)> {
-        self.extra_scan_dirs
-            .iter()
-            .map(|dir| {
-                (
-                    clean_path(&paths.home.join(dir)),
-                    self.shared_discovery_only,
-                )
-            })
-            .collect()
     }
 }
 

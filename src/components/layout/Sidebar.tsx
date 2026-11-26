@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/format';
+import { useAppStore } from '../../store/app-store';
 import { Icon } from '../ui/Icon';
 
 const navItems = [
@@ -12,6 +13,13 @@ const navItems = [
 export function Sidebar() {
   const { pathname } = useLocation();
   const settingsActive = pathname.startsWith('/settings') || pathname === '/backup';
+  const updateInfo = useAppStore((state) => state.updateInfo);
+  const skippedVersion = useAppStore(
+    (state) => state.bootstrap?.settings.update.skippedVersion ?? null,
+  );
+  const hasUpdate = Boolean(
+    updateInfo?.updateAvailable && updateInfo.latestVersion !== skippedVersion,
+  );
 
   return (
     <aside className="flex w-[240px] shrink-0 flex-col justify-between border-r border-[color-mix(in_srgb,var(--color-outline-variant,#e5e5e3)_50%,transparent)] bg-[var(--color-surface-container-lowest,#fff)] px-3 py-4">
@@ -48,6 +56,13 @@ export function Sidebar() {
         >
           <Icon name="settings" size={20} />
           设置
+          {hasUpdate ? (
+            <span
+              aria-label="有新版本"
+              title="有新版本"
+              className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-error"
+            />
+          ) : null}
         </NavLink>
       </div>
     </aside>

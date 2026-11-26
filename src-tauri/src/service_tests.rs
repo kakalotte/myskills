@@ -592,4 +592,285 @@ mod tests {
             "removal must not touch the disk directory"
         );
     }
+
+    fn install_copy(fixture: &Fixture, skill_name: &str, agent_id: &str) {
+        fixture
+            .service
+            .install_skill_inner(skill_name, agent_id, ScopeKind::Global, None, true, false)
+            .expect("install copy");
+    }
+
+    fn save(fixture: &Fixture, skill_name: &str, raw: &str) -> SaveSkillOutcome {
+        fixture
+            .service
+            .save_skill(SaveSkillPayload {
+                skill_name: skill_name.to_string(),
+                raw: raw.to_string(),
+            })
+            .expect("save skill")
+    }
+
+    #[test]
+    fn save_skill_resyncs_copy_mount_to_current_central_content() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "旧说明", "# 旧正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let target = fixture.home.join(".workbuddy/skills/weekly-menu/SKILL.md");
+        assert!(fs::read_to_string(&target).unwrap().contains("旧正文"));
+
+        let raw = "---\nname: weekly-menu\ndescription: 新说明\nversion: 1.0.1\n---\n\n# 新正文\n";
+        let outcome = save(&fixture, "weekly-menu", raw);
+        assert_eq!(outcome.resynced, 1, "one copy mount must be refreshed");
+        let content = fs::read_to_string(&target).expect("copy content");
+        assert!(content.contains("新正文"), "copy: {content}");
+
+        let manifest: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(fixture.root.join("manifest.json")).unwrap())
+                .unwrap();
+        let source_hash = manifest["installations"][0]["sourceHash"]
+            .as_str()
+            .expect("sourceHash recorded");
+        let content_hash = manifest["skills"][0]["contentHash"]
+            .as_str()
+            .expect("contentHash recorded");
+        assert_eq!(source_hash, content_hash);
+    }
+
+    #[test]
+    fn save_skill_skips_unchanged_copy_mount() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let raw = fs::read_to_string(fixture.store().join("weekly-menu/SKILL.md")).unwrap();
+        let copy_dir = fixture.home.join(".workbuddy/skills/weekly-menu");
+        fs::write(copy_dir.join("MARKER.txt"), "keep-me").expect("marker");
+
+        let outcome = save(&fixture, "weekly-menu", &raw);
+        assert_eq!(outcome.resynced, 0);
+        assert_eq!(outcome.unchanged, 1);
+        assert!(
+            copy_dir.join("MARKER.txt").exists(),
+            "unchanged copy must not be re-copied"
+        );
+    }
+
+    #[test]
+    fn save_skill_trashes_externally_modified_copy_before_resync() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 中央正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let copy_file = fixture.home.join(".workbuddy/skills/weekly-menu/SKILL.md");
+        fs::write(&copy_file, "# 用户改动").expect("modify copy");
+
+        let raw =
+            "---\nname: weekly-menu\ndescription: 说明\nversion: 1.0.1\n---\n\n# 新中央正文\n";
+        let outcome = save(&fixture, "weekly-menu", raw);
+        assert_eq!(outcome.resynced, 1);
+        assert!(
+            fs::read_to_string(&copy_file)
+                .unwrap()
+                .contains("新中央正文")
+        );
+
+        let trashed = fs::read_dir(fixture.root.join("trash"))
+            .expect("trash dir")
+            .filter_map(Result::ok)
+            .any(|entry| {
+                fs::read_to_string(entry.path().join("SKILL.md"))
+                    .map(|content| content.contains("用户改动"))
+                    .unwrap_or(false)
+            });
+        assert!(trashed, "drifted copy must be moved to trash");
+    }
+
+    #[test]
+    fn save_skill_refuses_foreign_file_at_copy_target() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let target = fixture.home.join(".workbuddy/skills/weekly-menu");
+        fs::remove_dir_all(&target).expect("remove copy");
+        fs::write(&target, "用户自己的文件").expect("foreign file");
+
+        let raw = "---\nname: weekly-menu\ndescription: 新说明\nversion: 1.0.1\n---\n\n# 新正文\n";
+        let outcome = save(&fixture, "weekly-menu", raw);
+        assert_eq!(outcome.resynced, 0);
+        assert_eq!(outcome.refused.len(), 1, "foreign target must be reported");
+        assert_eq!(
+            fs::read_to_string(&target).expect("foreign file preserved"),
+            "用户自己的文件"
+        );
+    }
+
+    #[test]
+    fn shared_skills_directory_resyncs_once_and_all_agents_see_installed() {
+        let fixture = Fixture::new();
+        let shared = fixture.home.join(".agents/skills");
+        fs::create_dir_all(&shared).expect("shared skills dir");
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "cline");
+
+        let scan = fixture.scan_global();
+        for agent in ["cline", "warp"] {
+            let badge = skill(&scan, "weekly-menu")
+                .badges
+                .iter()
+                .find(|badge| badge.agent_id == agent)
+                .unwrap_or_else(|| panic!("badge for {agent}"));
+            assert_eq!(badge.state, BadgeState::Installed, "agent {agent}");
+        }
+
+        let raw = "---\nname: weekly-menu\ndescription: 新说明\nversion: 1.0.1\n---\n\n# 新正文\n";
+        let outcome = save(&fixture, "weekly-menu", raw);
+        assert_eq!(
+            outcome.resynced, 1,
+            "shared physical mount is a single copy"
+        );
+        assert!(
+            fs::read_to_string(shared.join("weekly-menu/SKILL.md"))
+                .unwrap()
+                .contains("新正文")
+        );
+    }
+
+    fn installation_count(fixture: &Fixture) -> usize {
+        let raw = fs::read_to_string(fixture.root.join("manifest.json")).expect("manifest");
+        let manifest: serde_json::Value = serde_json::from_str(&raw).expect("json");
+        manifest["installations"]
+            .as_array()
+            .expect("installations")
+            .len()
+    }
+
+    #[test]
+    fn uninstall_clears_stale_record_when_target_is_already_gone() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let target = fixture.home.join(".workbuddy/skills/weekly-menu");
+        fs::remove_dir_all(&target).expect("remove copy");
+        assert_eq!(installation_count(&fixture), 1);
+
+        let outcome = fixture
+            .service
+            .uninstall_skill(UninstallSkillPayload {
+                skill_name: "weekly-menu".to_string(),
+                agent_id: "workbuddy".to_string(),
+                scope: ScopeKind::Global,
+                project_id: None,
+                force: false,
+            })
+            .expect("uninstall cleans up leftover record");
+        assert!(outcome.message.contains("残留"));
+        assert_eq!(installation_count(&fixture), 0);
+        assert!(fixture.store().join("weekly-menu/SKILL.md").exists());
+    }
+
+    #[test]
+    fn scanning_does_not_resurrect_a_missing_mount_from_a_stale_record() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        let target = fixture.home.join(".workbuddy/skills/weekly-menu");
+        fs::remove_dir_all(&target).expect("remove copy");
+
+        let scan = fixture.scan_global();
+        assert!(!target.exists(), "a removed mount must not be recreated");
+        assert_eq!(
+            installation_count(&fixture),
+            0,
+            "stale record must be dropped"
+        );
+        assert!(
+            !scan.skills.is_empty(),
+            "the central skill itself must still be visible"
+        );
+    }
+
+    #[test]
+    fn uninstall_after_cleanup_reports_not_installed() {
+        let fixture = Fixture::new();
+        fixture.central("weekly-menu", "weekly-menu", "说明", "# 正文");
+        install_copy(&fixture, "weekly-menu", "workbuddy");
+        fs::remove_dir_all(fixture.home.join(".workbuddy/skills/weekly-menu"))
+            .expect("remove copy");
+        fixture
+            .service
+            .uninstall_skill(UninstallSkillPayload {
+                skill_name: "weekly-menu".to_string(),
+                agent_id: "workbuddy".to_string(),
+                scope: ScopeKind::Global,
+                project_id: None,
+                force: false,
+            })
+            .expect("first uninstall cleans up");
+
+        let error = fixture
+            .service
+            .uninstall_skill(UninstallSkillPayload {
+                skill_name: "weekly-menu".to_string(),
+                agent_id: "workbuddy".to_string(),
+                scope: ScopeKind::Global,
+                project_id: None,
+                force: false,
+            })
+            .unwrap_err();
+        assert_eq!(error.code, "NOT_INSTALLED");
+    }
+
+    #[test]
+    fn update_settings_default_to_auto_check_enabled() {
+        let fixture = Fixture::new();
+        let bootstrap = fixture.service.bootstrap().expect("bootstrap");
+        assert!(bootstrap.settings.update.auto_check);
+        assert!(bootstrap.settings.update.last_checked_at.is_none());
+        assert!(bootstrap.settings.update.skipped_version.is_none());
+    }
+
+    #[test]
+    fn update_settings_round_trip_and_normalize_blank_values() {
+        let fixture = Fixture::new();
+        let settings = fixture
+            .service
+            .save_update_settings(UpdateSettings {
+                auto_check: false,
+                last_checked_at: Some(" 2026-11-26T09:00:00.000Z ".to_string()),
+                latest_version: Some(" 0.5.0 ".to_string()),
+                skipped_version: Some(" 0.5.0 ".to_string()),
+                last_notified_version: Some("   ".to_string()),
+            })
+            .expect("save update settings");
+        assert!(!settings.update.auto_check);
+        assert_eq!(
+            settings.update.last_checked_at.as_deref(),
+            Some("2026-11-26T09:00:00.000Z")
+        );
+        assert_eq!(settings.update.latest_version.as_deref(), Some("0.5.0"));
+        assert_eq!(settings.update.skipped_version.as_deref(), Some("0.5.0"));
+        assert!(settings.update.last_notified_version.is_none());
+
+        let reloaded = fixture.service.bootstrap().expect("reload");
+        assert!(!reloaded.settings.update.auto_check);
+        assert_eq!(
+            reloaded.settings.update.latest_version.as_deref(),
+            Some("0.5.0")
+        );
+        assert_eq!(
+            reloaded.settings.update.skipped_version.as_deref(),
+            Some("0.5.0")
+        );
+    }
+
+    #[test]
+    fn settings_without_update_field_still_load() {
+        let fixture = Fixture::new();
+        let path = fixture.root.join("settings.json");
+        fs::write(
+            &path,
+            r#"{"schemaVersion":2,"onboardingCompleted":true,"theme":"system","authorizedRoots":{},"projects":[],"activeScope":"global","activeProjectId":null,"customAgents":[]}"#,
+        )
+        .expect("write legacy settings");
+        let bootstrap = fixture.service.bootstrap().expect("bootstrap");
+        assert!(bootstrap.settings.update.auto_check);
+    }
 }

@@ -5,6 +5,7 @@ mod error;
 mod fsutil;
 mod model;
 mod paths;
+mod platform;
 mod service;
 #[cfg(test)]
 mod service_tests;
@@ -75,6 +76,15 @@ async fn set_theme(
 ) -> CmdResult<Settings> {
     let service = state.inner().clone();
     blocking(move || service.set_theme(theme)).await
+}
+
+#[tauri::command]
+async fn save_update_settings(
+    state: State<'_, Arc<AppService>>,
+    payload: UpdateSettings,
+) -> CmdResult<Settings> {
+    let service = state.inner().clone();
+    blocking(move || service.save_update_settings(payload)).await
 }
 
 #[tauri::command]
@@ -242,8 +252,31 @@ async fn distribute_bundle(
     blocking(move || service.distribute_bundle(payload)).await
 }
 
+/// Re-apply the window's current size once so WebKitGTK reallocates its
+/// drawing buffer. On some Wayland/ARM setups the first buffer is invalid and
+/// the page stays garbled until a resize (e.g. fullscreen) happens.
+#[cfg(target_os = "linux")]
+fn nudge_webview_repaint(app: &tauri::AppHandle) -> bool {
+    use tauri::PhysicalSize;
+
+    let Some(window) = app.get_webview_window("main") else {
+        return false;
+    };
+    let Ok(size) = window.inner_size() else {
+        return false;
+    };
+    if size.width < 2 || size.height < 2 {
+        return false;
+    }
+    let _ = window.set_size(PhysicalSize::new(size.width, size.height - 1));
+    let _ = window.set_size(size);
+    true
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    platform::apply_render_compat();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -252,6 +285,15 @@ pub fn run() {
             let paths = AppPaths::detect();
             let service = AppService::new(paths)?;
             app.manage(Arc::new(service));
+            #[cfg(target_os = "linux")]
+            {
+                // Defer until the window is mapped and has painted once.
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(400));
+                    let _ = handle.run_on_main_thread(move || nudge_webview_repaint(&handle));
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -260,6 +302,7 @@ pub fn run() {
             add_custom_agent,
             remove_custom_agent,
             set_theme,
+            save_update_settings,
             register_project,
             remove_project,
             scan_skills,

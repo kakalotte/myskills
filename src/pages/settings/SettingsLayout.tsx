@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { cn } from '../../lib/format';
+import { useAppStore } from '../../store/app-store';
 import { Icon } from '../../components/ui/Icon';
 
 const navItems = [
@@ -10,6 +11,14 @@ const navItems = [
 ];
 
 export function SettingsLayout() {
+  const updateInfo = useAppStore((state) => state.updateInfo);
+  const skippedVersion = useAppStore(
+    (state) => state.bootstrap?.settings.update.skippedVersion ?? null,
+  );
+  const hasUpdate = Boolean(
+    updateInfo?.updateAvailable && updateInfo.latestVersion !== skippedVersion,
+  );
+
   return (
     <div className="flex w-full flex-col gap-space-md p-space-md">
       <div className="flex flex-col justify-between gap-space-sm md:flex-row md:items-end">
@@ -38,6 +47,13 @@ export function SettingsLayout() {
           >
             <Icon name={item.icon} size={18} />
             <span>{item.label}</span>
+            {item.to === '/settings/about' && hasUpdate ? (
+              <span
+                aria-label="有新版本"
+                title="有新版本"
+                className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-error"
+              />
+            ) : null}
           </NavLink>
         ))}
       </nav>

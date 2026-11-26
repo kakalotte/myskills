@@ -34,6 +34,7 @@ import type {
   ThemePreference,
   UninstallSkillPayload,
   UpdateBundlePayload,
+  UpdateSettings,
 } from './types';
 
 export function isTauri(): boolean {
@@ -89,6 +90,8 @@ async function demoCall<T>(command: string, args: Record<string, unknown> = {}):
       return (await demoApi.removeCustomAgent(args.id as string)) as T;
     case 'set_theme':
       return (await demoApi.setTheme(args.theme as ThemePreference)) as T;
+    case 'save_update_settings':
+      return (await demoApi.saveUpdateSettings(payload as unknown as UpdateSettings)) as T;
     case 'register_project':
       return (await demoApi.registerProject(payload as unknown as RegisterProjectPayload)) as T;
     case 'remove_project':
@@ -122,9 +125,7 @@ async function demoCall<T>(command: string, args: Record<string, unknown> = {}):
     case 'remove_skill_from_bundle':
       return (await demoApi.removeSkillFromBundle(payload as unknown as BundleSkillPayload)) as T;
     case 'distribute_bundle':
-      return (await demoApi.distributeBundle(
-        payload as unknown as DistributeBundlePayload,
-      )) as T;
+      return (await demoApi.distributeBundle(payload as unknown as DistributeBundlePayload)) as T;
     default:
       throw normalizeError({ code: 'DEMO_UNSUPPORTED', message: `演示模式不支持：${command}` });
   }
@@ -138,6 +139,8 @@ export const api = {
     call<Bootstrap>('add_custom_agent', { payload }),
   removeCustomAgent: (id: string) => call<Bootstrap>('remove_custom_agent', { id }),
   setTheme: (theme: ThemePreference) => call<Settings>('set_theme', { theme }),
+  saveUpdateSettings: (payload: UpdateSettings) =>
+    call<Settings>('save_update_settings', { payload }),
   registerProject: (payload: RegisterProjectPayload) =>
     call<Project>('register_project', { payload }),
   removeProject: (projectId: string) => call<Bootstrap>('remove_project', { projectId }),

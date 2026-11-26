@@ -33,6 +33,32 @@ export interface Settings {
   activeScope: ScopeKind;
   /** @deprecated Not used as business state. */
   activeProjectId: string | null;
+  /** App update check preferences and cache. */
+  update: UpdateSettings;
+}
+
+/** App update check preferences and cache, persisted in settings.json. */
+export interface UpdateSettings {
+  /** Check for a newer release shortly after launch (at most once per day). */
+  autoCheck: boolean;
+  /** ISO timestamp of the last successful check. */
+  lastCheckedAt: string | null;
+  /** Latest release version seen by the last successful check. */
+  latestVersion: string | null;
+  /** Release version the user asked to stop being reminded about. */
+  skippedVersion: string | null;
+  /** Release version already announced by a toast. */
+  lastNotifiedVersion: string | null;
+}
+
+/** Result of one successful update check against GitHub Releases. */
+export interface UpdateCheck {
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  releaseUrl: string;
+  publishedAt: string | null;
+  checkedAt: string;
 }
 
 export interface AgentInfo {
@@ -333,6 +359,12 @@ export interface SaveSkillOutcome {
   skillName: string;
   displayPath: string;
   message: string;
+  /** Copy mounts refreshed from the central library by this save. */
+  resynced: number;
+  /** Copy mounts already at the current content hash. */
+  unchanged: number;
+  /** Targets left untouched because they are not ours to replace. */
+  refused: string[];
 }
 
 export interface ToastMessage {

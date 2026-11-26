@@ -180,10 +180,24 @@ export function SkillEditPage() {
     setSaving(true);
     setError(null);
     try {
-      await api.saveSkill({ skillName: skill.name, raw: nextRaw });
+      const outcome = await api.saveSkill({ skillName: skill.name, raw: nextRaw });
       await refreshGlobal({ announce: false });
       if (scope === 'project' && projectId) await refreshProject(projectId, { announce: false });
-      pushToast({ tone: 'success', title: '已保存', description: 'SKILL.md 已写入中央库' });
+      pushToast({
+        tone: 'success',
+        title: '已保存',
+        description:
+          outcome.resynced > 0
+            ? `SKILL.md 已写入中央库 · 已同步 ${outcome.resynced} 处副本（${outcome.unchanged} 处已是最新）`
+            : 'SKILL.md 已写入中央库',
+      });
+      if (outcome.refused.length > 0) {
+        pushToast({
+          tone: 'warning',
+          title: '部分目标未自动同步',
+          description: `${outcome.refused.length} 处目标不是 mySkills 管理的副本，原内容已保留`,
+        });
+      }
       navigate(`/skills/${encodeURIComponent(parsed.name)}${contextQuery}`);
     } catch (err: unknown) {
       const normalized = err as { code?: string; message?: string };

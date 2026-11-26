@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const SETTINGS_SCHEMA_VERSION: u32 = 2;
-pub const MANIFEST_SCHEMA_VERSION: u32 = 1;
+pub const MANIFEST_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
@@ -47,6 +47,43 @@ pub enum ThemePreference {
     System,
 }
 
+/// App update check preferences and cache. Persisted in `settings.json`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSettings {
+    /// Check for a newer release shortly after launch (at most once per day).
+    #[serde(default = "default_true")]
+    pub auto_check: bool,
+    /// RFC 3339 timestamp of the last successful check.
+    #[serde(default)]
+    pub last_checked_at: Option<String>,
+    /// Latest release version seen by the last successful check.
+    #[serde(default)]
+    pub latest_version: Option<String>,
+    /// Release version the user asked to stop being reminded about.
+    #[serde(default)]
+    pub skipped_version: Option<String>,
+    /// Release version already announced by a toast.
+    #[serde(default)]
+    pub last_notified_version: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        Self {
+            auto_check: true,
+            last_checked_at: None,
+            latest_version: None,
+            skipped_version: None,
+            last_notified_version: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -66,6 +103,9 @@ pub struct Settings {
     /// User-defined Agent directories. Global scope only; not part of adapters.json.
     #[serde(default)]
     pub custom_agents: Vec<CustomAgent>,
+    /// Update check preferences; defaults keep older settings.json files compatible.
+    #[serde(default)]
+    pub update: UpdateSettings,
 }
 
 impl Default for Settings {
@@ -79,6 +119,7 @@ impl Default for Settings {
             active_scope: ScopeKind::Global,
             active_project_id: None,
             custom_agents: Vec::new(),
+            update: UpdateSettings::default(),
         }
     }
 }
@@ -90,6 +131,9 @@ pub struct SkillMeta {
     pub source: SkillSource,
     pub created_at: String,
     pub updated_at: String,
+    /// Hash of the central skill directory at the last known content state.
+    #[serde(default)]
+    pub content_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,8 +146,13 @@ pub struct Installation {
     pub scope: ScopeKind,
     pub mount_type: MountType,
     pub target_path: String,
+    /// Hash of the copy itself; used for drift detection on uninstall.
     #[serde(default)]
     pub target_fingerprint: Option<String>,
+    /// Hash of the central skill directory at the last successful sync.
+    /// Compared with `SkillMeta.content_hash` to detect stale copy mounts.
+    #[serde(default)]
+    pub source_hash: Option<String>,
     pub installed_at: String,
 }
 
@@ -483,6 +532,12 @@ pub struct SaveSkillOutcome {
     pub skill_name: String,
     pub display_path: String,
     pub message: String,
+    /// Copy mounts refreshed from the central library by this save.
+    pub resynced: usize,
+    /// Copy mounts already at the current content hash.
+    pub unchanged: usize,
+    /// Targets left untouched because they are not ours to replace.
+    pub refused: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

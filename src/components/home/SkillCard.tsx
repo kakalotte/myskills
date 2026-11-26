@@ -88,10 +88,13 @@ export function SkillCard({
         setForcePrompt({ agentId, agentName });
         return;
       }
+      const normalized = error as { message?: string; detail?: string };
       pushToast({
         tone: 'error',
         title: installed ? '卸载未完成' : '安装未完成',
-        description: (error as { message?: string }).message ?? String(error),
+        description: normalized.detail
+          ? `${normalized.message ?? String(error)}\n${normalized.detail}`
+          : normalized.message ?? String(error),
       });
     } finally {
       setPendingAgent(null);

@@ -183,7 +183,20 @@ pub fn remove_symlink(path: &Path) -> CmdResult<()> {
 
 #[cfg(windows)]
 pub fn create_dir_symlink(source: &Path, target: &Path) -> std::io::Result<()> {
-    std::os::windows::fs::symlink_dir(source, target)
+    match std::os::windows::fs::symlink_dir(source, target) {
+        Ok(()) => Ok(()),
+        Err(symlink_error) => {
+            // Directory junctions need no SeCreateSymbolicLinkPrivilege on local
+            // NTFS volumes. std reports them as symlinks, so the existing
+            // freshness checks and unlink-on-uninstall keep working.
+            // If junctions are unavailable too (e.g. a UNC target), return the
+            // original error so the caller falls back to a plain copy.
+            match junction::create(source, target) {
+                Ok(()) => Ok(()),
+                Err(_) => Err(symlink_error),
+            }
+        }
+    }
 }
 
 #[cfg(not(windows))]

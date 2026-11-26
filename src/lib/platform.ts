@@ -1,6 +1,6 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { isTauri } from './bridge';
 
 export async function copyText(value: string): Promise<void> {
@@ -9,6 +9,18 @@ export async function copyText(value: string): Promise<void> {
     return;
   }
   await navigator.clipboard.writeText(value);
+}
+
+/** Open an HTTPS link in the system browser (the desktop webview must not navigate away). */
+export async function openExternal(url: string): Promise<void> {
+  if (!/^https:\/\//i.test(url)) {
+    throw new Error('仅支持打开 HTTPS 链接');
+  }
+  if (isTauri()) {
+    await openUrl(url);
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 export async function revealPath(path: string): Promise<void> {
