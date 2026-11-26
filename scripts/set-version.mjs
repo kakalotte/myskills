@@ -28,11 +28,13 @@ writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
 
 const cargoPath = 'src-tauri/Cargo.toml';
 const cargo = readFileSync(cargoPath, 'utf8');
-const updatedCargo = cargo.replace(/^version = "[^"]+"/m, `version = "${version}"`);
-if (updatedCargo === cargo) {
+const versionLine = /^version = "[^"]+"/m;
+if (!versionLine.test(cargo)) {
   console.error(`Could not update version in ${cargoPath}`);
   process.exit(1);
 }
+// An already-matching version is a valid no-op (e.g. when the tag equals the committed version).
+const updatedCargo = cargo.replace(versionLine, `version = "${version}"`);
 writeFileSync(cargoPath, updatedCargo);
 
 console.log(`Version set to ${version}`);
